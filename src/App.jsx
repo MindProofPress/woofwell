@@ -45,6 +45,29 @@ const GLOBAL_CSS = `
   .sym-chip.selected { border-color: ${C.accent} !important; background: ${C.accentDim} !important; color: ${C.accent} !important; }
 `;
 
+// ─── Scan Limit Hook ──────────────────────────────────────────────
+const MAX_FREE_SCANS = 3;
+
+function useScanLimit(userId, isPro) {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `scans_${userId}_${today}`;
+
+  const getCount = () => parseInt(localStorage.getItem(key) || "0", 10);
+
+  const [scansUsed, setScansUsed] = useState(getCount);
+
+  const canScan = isPro || scansUsed < MAX_FREE_SCANS;
+
+  const incrementScan = () => {
+    if (isPro) return;
+    const next = getCount() + 1;
+    localStorage.setItem(key, next);
+    setScansUsed(next);
+  };
+
+  return { scansUsed, canScan, incrementScan, maxScans: MAX_FREE_SCANS };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────
 function parseMarkdown(text) {
   return text.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
@@ -312,7 +335,7 @@ function Paywall({ onUnlock, isPro }) {
 }
 
 // ─── PHOTO BREED IDENTIFIER ───────────────────────────────────────
-function BreedIdentifier({ isPro, onUpgrade }) {
+function BreedIdentifier({ isPro, onUpgrade, userId }) {
   const [image, setImage] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [imageMediaType, setImageMediaType] = useState("image/jpeg");
@@ -320,8 +343,7 @@ function BreedIdentifier({ isPro, onUpgrade }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef();
-  const [scansUsed] = useState(2);
-  const maxFreeScans = 3;
+  const { scansUsed, canScan, incrementScan, maxScans } = useScanLimit(userId, isPro);
 
   const handleFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -339,6 +361,7 @@ function BreedIdentifier({ isPro, onUpgrade }) {
 
   const identify = async () => {
     if (!imageBase64) return;
+    if (!canScan) { onUpgrade(); return; }
     setLoading(true); setError(null);
     try {
       const text = await callClaude(
@@ -359,6 +382,7 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
       );
       const clean = text.replace(/```json|```/g, "").trim();
       setResult(JSON.parse(clean));
+      incrementScan();
     } catch {
       setError("Couldn't identify the breed. Please try a clearer photo.");
     }
@@ -372,8 +396,8 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
   return (
     <div style={{ animation: "fadeUp 0.3s ease" }}>
       {!isPro && (
-        <div style={{ background: C.proDim, border: `1px solid ${C.pro}33`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 12, color: C.muted }}>{scansUsed}/{maxFreeScans} free scans used today</span>
+        <div style={{ background: canScan ? C.proDim : "#1F0A0A", border: `1px solid ${canScan ? C.pro + "33" : C.danger + "55"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 12, color: canScan ? C.muted : C.danger }}>{scansUsed}/{maxScans} free scans used today{!canScan && " — limit reached"}</span>
           <button onClick={onUpgrade} style={{ background: "none", border: "none", color: C.pro, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>Upgrade →</button>
         </div>
       )}
@@ -447,7 +471,7 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
 }
 
 // ─── SYMPTOM CHECKER ──────────────────────────────────────────────
-function SymptomChecker({ isPro, onUpgrade }) {
+function SymptomChecker({ isPro, onUpgrade, userId }) {
   const SYMPTOMS = [
     "Vomiting", "Diarrhea", "Lethargy", "Not eating", "Excessive thirst",
     "Coughing", "Sneezing", "Limping", "Hair loss", "Itching/Scratching",
@@ -461,11 +485,13 @@ function SymptomChecker({ isPro, onUpgrade }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { scansUsed, canScan, incrementScan, maxScans } = useScanLimit(userId, isPro);
 
   const toggle = (s) => setSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
   const check = async () => {
     if (!selected.length) return;
+    if (!canScan) { onUpgrade(); return; }
     setLoading(true); setError(null);
     try {
       const text = await callClaude(
@@ -483,6 +509,7 @@ function SymptomChecker({ isPro, onUpgrade }) {
       );
       const clean = text.replace(/```json|```/g, "").trim();
       setResult(JSON.parse(clean));
+      incrementScan();
     } catch {
       setError("Analysis failed. Please try again.");
     }
@@ -499,9 +526,9 @@ function SymptomChecker({ isPro, onUpgrade }) {
   return (
     <div style={{ animation: "fadeUp 0.3s ease" }}>
       {!isPro && (
-        <div style={{ background: C.proDim, border: `1px solid ${C.pro}33`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 12, color: C.muted }}>Free: basic triage only</span>
-          <button onClick={onUpgrade} style={{ background: "none", border: "none", color: C.pro, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>Get full analysis →</button>
+        <div style={{ background: canScan ? C.proDim : "#1F0A0A", border: `1px solid ${canScan ? C.pro + "33" : C.danger + "55"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 12, color: canScan ? C.muted : C.danger }}>{scansUsed}/{maxScans} free checks used today{!canScan && " — limit reached"}</span>
+          <button onClick={onUpgrade} style={{ background: "none", border: "none", color: C.pro, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>Upgrade →</button>
         </div>
       )}
 
@@ -796,8 +823,8 @@ export default function WoofWell() {
       {/* Content */}
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px 60px" }}>
         {tab === "health" && <HealthProfile />}
-        {tab === "photo" && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} />}
-        {tab === "symptoms" && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} />}
+        {tab === "photo" && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
+        {tab === "symptoms" && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
         {tab === "pro" && <Paywall isPro={isPro} onUnlock={() => { setIsPro(true); setTab("health"); }} />}
       </div>
     </div>
