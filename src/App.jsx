@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { supabase } from "./supabase";
 
 // ─── Design Tokens ───────────────────────────────────────────────
 const C = {
@@ -132,6 +133,80 @@ function SectionLabel({ children }) {
   return (
     <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>
       {children}
+    </div>
+  );
+}
+
+// ─── AUTH SCREEN ─────────────────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
+
+  const handleSubmit = async () => {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      if (mode === "login") {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        onAuth(data.user);
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setMessage("Check your email to confirm your account, then log in.");
+        setMode("login");
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 400, animation: "fadeUp 0.3s ease" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <PawIcon size={40} />
+          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, fontWeight: 700, color: C.text, margin: "12px 0 4px" }}>
+            Woof<span style={{ color: C.accent }}>Well</span>
+          </h1>
+          <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>AI-powered dog health companion</p>
+        </div>
+
+        <Card>
+          <div style={{ display: "flex", background: C.card2, borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
+            {["login", "signup"].map(m => (
+              <button key={m} onClick={() => { setMode(m); setError(null); setMessage(null); }} style={{
+                flex: 1, padding: "9px 0", borderRadius: 8, border: "none",
+                background: mode === m ? C.card : "transparent",
+                color: mode === m ? C.text : C.muted,
+                fontSize: 13, fontWeight: 500, fontFamily: "'Outfit', sans-serif", cursor: "pointer"
+              }}>
+                {m === "login" ? "Log In" : "Sign Up"}
+              </button>
+            ))}
+          </div>
+
+          <SectionLabel>Email</SectionLabel>
+          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" type="email"
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }} />
+
+          <SectionLabel>Password</SectionLabel>
+          <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password"
+            onKeyDown={e => e.key === "Enter" && handleSubmit()}
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 20 }} />
+
+          {error && <div style={{ color: C.danger, fontSize: 13, marginBottom: 14, textAlign: "center" }}>{error}</div>}
+          {message && <div style={{ color: C.success, fontSize: 13, marginBottom: 14, textAlign: "center" }}>{message}</div>}
+
+          <ActionBtn onClick={handleSubmit} loading={loading}>
+            {mode === "login" ? "Log In" : "Create Account"}
+          </ActionBtn>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -653,6 +728,32 @@ const TABS = [
 export default function WoofWell() {
   const [tab, setTab] = useState("health");
   const [isPro, setIsPro] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (authLoading) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Spinner />
+    </div>
+  );
+
+  if (!user) return <AuthScreen onAuth={setUser} />;
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Outfit', sans-serif" }}>
@@ -669,7 +770,10 @@ export default function WoofWell() {
         {isPro && (
           <span style={{ marginLeft: 4, background: C.proDim, border: `1px solid ${C.pro}`, borderRadius: 12, padding: "2px 9px", fontSize: 10, color: C.pro, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em" }}>PRO</span>
         )}
-        <div style={{ marginLeft: "auto", fontSize: 11, color: C.muted, fontFamily: "'JetBrains Mono', monospace" }}>AI-Powered</div>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 11, color: C.muted, fontFamily: "'JetBrains Mono', monospace" }}>AI-Powered</span>
+          <button onClick={handleSignOut} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", color: C.muted, fontSize: 11, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>Sign Out</button>
+        </div>
       </div>
 
       {/* Tabs */}
