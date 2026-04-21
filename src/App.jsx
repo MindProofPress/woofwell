@@ -236,8 +236,84 @@ function AuthScreen({ onAuth }) {
 }
 
 // ─── PAYWALL ─────────────────────────────────────────────────────
-function Paywall({ onUnlock, isPro }) {
+function Paywall({ onUnlock, isPro, userId }) {
   const [billing, setBilling] = useState("annual");
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const formatCard = (v) => v.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
+  const formatExpiry = (v) => { const d = v.replace(/\D/g, "").slice(0, 4); return d.length >= 3 ? d.slice(0, 2) + "/" + d.slice(2) : d; };
+
+  const handlePayment = async () => {
+    setProcessing(true);
+    await new Promise(r => setTimeout(r, 2200));
+    await supabase.from("profiles").upsert({ id: userId, is_pro: true, pro_since: new Date().toISOString() }, { onConflict: "id" });
+    setProcessing(false);
+    setDone(true);
+    await new Promise(r => setTimeout(r, 1200));
+    onUnlock();
+  };
+
+  const price = billing === "annual" ? 3.33 : 4.99;
+  const inputStyle = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 };
+
+  if (showCheckout) return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      {done ? (
+        <Card style={{ textAlign: "center", padding: "50px 20px", borderColor: C.success }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: C.success, fontWeight: 700 }}>Payment Successful!</div>
+          <div style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>Activating your Pro account...</div>
+        </Card>
+      ) : (
+        <>
+          <button onClick={() => setShowCheckout(false)} className="back-btn"
+            style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", marginBottom: 16, fontFamily: "'Outfit', sans-serif", padding: 0 }}>
+            ← Back
+          </button>
+          <Card style={{ marginBottom: 14, background: C.proDim, borderColor: C.pro }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.pro }}>WoofWell Pro — {billing === "annual" ? "Annual" : "Monthly"}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{billing === "annual" ? `$${(3.33 * 12).toFixed(2)}/year` : "$4.99/month"}</div>
+              </div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: C.pro }}>${price.toFixed(2)}<span style={{ fontSize: 13, color: C.muted }}>/mo</span></div>
+            </div>
+          </Card>
+          <Card>
+            <SectionLabel>Name on Card</SectionLabel>
+            <input value={cardName} onChange={e => setCardName(e.target.value)} placeholder="Jane Smith" style={inputStyle} />
+            <SectionLabel>Card Number</SectionLabel>
+            <input value={cardNumber} onChange={e => setCardNumber(formatCard(e.target.value))} placeholder="1234 5678 9012 3456" style={inputStyle} />
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <SectionLabel>Expiry</SectionLabel>
+                <input value={expiry} onChange={e => setExpiry(formatExpiry(e.target.value))} placeholder="MM/YY" style={{ ...inputStyle, marginBottom: 0 }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <SectionLabel>CVV</SectionLabel>
+                <input value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="123" style={{ ...inputStyle, marginBottom: 0 }} />
+              </div>
+            </div>
+          </Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", margin: "12px 0", color: C.muted, fontSize: 12 }}>
+            🔒 Secured with 256-bit SSL encryption
+          </div>
+          <ActionBtn onClick={handlePayment} disabled={!cardName || cardNumber.replace(/\s/g, "").length < 16 || expiry.length < 5 || cvv.length < 3} loading={processing} style={{ background: C.pro }}>
+            {processing ? "Processing payment..." : `💳 Pay $${price.toFixed(2)}/mo`}
+          </ActionBtn>
+          <div style={{ textAlign: "center", color: C.muted, fontSize: 11, marginTop: 10 }}>
+            This is a demo — no real charge will occur
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   if (isPro) return (
     <Card style={{ textAlign: "center", borderColor: C.pro }}>
@@ -318,7 +394,7 @@ function Paywall({ onUnlock, isPro }) {
         </div>
       </Card>
 
-      <ActionBtn onClick={onUnlock} style={{ background: C.pro, marginBottom: 10 }}>
+      <ActionBtn onClick={() => setShowCheckout(true)} style={{ background: C.pro, marginBottom: 10 }}>
         👑 Start Pro — ${price.toFixed(2)}/mo
       </ActionBtn>
       <button className="free-btn" style={{
@@ -1118,15 +1194,20 @@ export default function WoofWell() {
     if (data) setDogs(data);
   };
 
+  const fetchProfile = async (uid) => {
+    const { data } = await supabase.from("profiles").select("is_pro").eq("id", uid).single();
+    if (data?.is_pro) setIsPro(true);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
-      if (session?.user) fetchDogs(session.user.id);
+      if (session?.user) { fetchDogs(session.user.id); fetchProfile(session.user.id); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchDogs(session.user.id);
+      if (session?.user) { fetchDogs(session.user.id); fetchProfile(session.user.id); }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -1189,7 +1270,7 @@ export default function WoofWell() {
         {tab === "health" && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
         {tab === "photo" && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
         {tab === "symptoms" && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
-        {tab === "pro" && <Paywall isPro={isPro} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
+        {tab === "pro" && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
       </div>
     </div>
   );
