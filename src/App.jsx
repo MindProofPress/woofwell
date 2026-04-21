@@ -343,8 +343,16 @@ function BreedIdentifier({ isPro, onUpgrade, userId }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [history, setHistory] = useState([]);
   const fileRef = useRef();
   const { scansUsed, canScan, incrementScan, maxScans } = useScanLimit(userId, isPro);
+
+  const loadHistory = async () => {
+    const { data } = await supabase.from("scan_history").select("*").eq("user_id", userId).order("scanned_at", { ascending: false }).limit(5);
+    if (data) setHistory(data);
+  };
+
+  useEffect(() => { loadHistory(); }, []);
 
   const handleFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -382,8 +390,20 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
         imageMediaType
       );
       const clean = text.replace(/```json|```/g, "").trim();
-      setResult(JSON.parse(clean));
+      const parsed = JSON.parse(clean);
+      setResult(parsed);
       incrementScan();
+      await supabase.from("scan_history").insert({
+        user_id: userId,
+        breed: parsed.breed,
+        confidence: parsed.confidence,
+        is_mix: parsed.mix || false,
+        secondary_breed: parsed.secondaryBreed || null,
+        traits: parsed.traits || [],
+        temperament: parsed.temperament,
+        fun_fact: parsed.funFact,
+      });
+      loadHistory();
     } catch {
       setError("Couldn't identify the breed. Please try a clearer photo.");
     }
@@ -465,6 +485,34 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
             <div style={{ fontSize: 11, color: C.accent, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em", marginBottom: 6 }}>FUN FACT</div>
             <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>🐾 {result.funFact}</div>
           </Card>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <SectionLabel>Recent Scans</SectionLabel>
+          {history.map(scan => {
+            const cc = scan.confidence >= 80 ? C.success : scan.confidence >= 60 ? C.warn : C.danger;
+            return (
+              <Card key={scan.id} style={{ marginBottom: 8, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{scan.breed}</div>
+                    {scan.is_mix && scan.secondary_breed && (
+                      <div style={{ fontSize: 11, color: C.muted }}>Mix with {scan.secondary_breed}</div>
+                    )}
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                      {new Date(scan.scanned_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: cc, fontFamily: "'JetBrains Mono', monospace" }}>{scan.confidence}%</div>
+                    <div style={{ fontSize: 10, color: C.muted }}>confidence</div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
