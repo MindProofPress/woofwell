@@ -393,6 +393,13 @@ function Paywall({ onUnlock, isPro, userId }) {
         </div>
       </Card>
 
+      {billing === "monthly" && (
+        <div onClick={() => setBilling("annual")} style={{ background: C.proDim, border: `1px solid ${C.pro}44`, borderRadius: 10, padding: "10px 14px", marginBottom: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>💡</span>
+          <span style={{ fontSize: 13, color: C.pro, fontWeight: 600 }}>Save ${((monthly - annual) * 12).toFixed(2)}/year — switch to Annual</span>
+          <span style={{ marginLeft: "auto", fontSize: 12, color: C.pro }}>Switch →</span>
+        </div>
+      )}
       <ActionBtn onClick={() => setShowCheckout(true)} style={{ background: C.pro, marginBottom: 10 }}>
         👑 Start Pro — ${price.toFixed(2)}/mo
       </ActionBtn>
@@ -782,15 +789,34 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
     onDogsChange();
   };
 
+  const streakKey = `streak_${userId}`, streakDateKey = `streak_date_${userId}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const lastDate = localStorage.getItem(streakDateKey);
+  let streak = parseInt(localStorage.getItem(streakKey) || "1", 10);
+  if (lastDate !== today) {
+    streak = lastDate === yesterday ? streak + 1 : 1;
+    localStorage.setItem(streakKey, streak);
+    localStorage.setItem(streakDateKey, today);
+  }
+
   return (
     <div style={{ animation: "fadeUp 0.3s ease" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: streak > 1 ? 8 : 16 }}>
         <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: C.text }}>My Dogs</div>
         <button onClick={() => { setShowAdd(!showAdd); setError(null); }}
           style={{ background: showAdd ? C.card2 : C.accent, border: "none", borderRadius: 8, padding: "7px 14px", color: showAdd ? C.muted : "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
           {showAdd ? "Cancel" : "+ Add Dog"}
         </button>
       </div>
+
+      {streak > 1 && (
+        <div style={{ background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 10, padding: "8px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🔥</span>
+          <span style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>{streak}-day streak!</span>
+          <span style={{ fontSize: 12, color: C.muted }}>Keep caring for your dogs every day.</span>
+        </div>
+      )}
 
       {showAdd && (
         <Card style={{ marginBottom: 16, borderColor: C.accent }}>
@@ -1017,6 +1043,9 @@ function HealthProfile({ selectedDog = null, onClearDog = null }) {
             <button onClick={exportPDF} style={{ flex: 1, padding: "11px 0", border: `1px solid ${C.accent}`, borderRadius: 10, background: "transparent", color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
               📄 Export PDF
             </button>
+            <button onClick={() => { navigator.clipboard.writeText(`WoofWell Health Profile — ${age} ${breed}\n\n${report}`); }} style={{ flex: 1, padding: "11px 0", border: `1px solid ${C.border}`, borderRadius: 10, background: "transparent", color: C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+              📋 Copy
+            </button>
           </div>
         </div>
       )}
@@ -1079,10 +1108,15 @@ function VetReminders({ userId, dogs }) {
     <div style={{ animation: "fadeUp 0.3s ease" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: C.text }}>Vet Reminders</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {"Notification" in window && Notification.permission === "default" && (
+            <button onClick={() => Notification.requestPermission()} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", color: C.muted, fontSize: 11, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>🔔 Enable alerts</button>
+          )}
         <button onClick={() => { setShowAdd(!showAdd); setError(null); }}
           style={{ background: showAdd ? C.card2 : C.accent, border: "none", borderRadius: 8, padding: "7px 14px", color: showAdd ? C.muted : "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
           {showAdd ? "Cancel" : "+ Add Reminder"}
         </button>
+        </div>
       </div>
 
       {showAdd && (
@@ -1489,7 +1523,7 @@ function EmergencyGuide() {
     <div style={{ animation: "fadeUp 0.3s ease" }}>
       <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Emergency</h2>
       <p style={{ color: C.muted, fontSize: 13, margin: "0 0 20px" }}>Quick access to emergency resources and first aid guidance.</p>
-      <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
         <button onClick={findVets} disabled={locating} style={{ flex: 1, padding: "14px 0", background: C.danger, border: "none", borderRadius: 12, color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           {locating ? <Spinner /> : "📍"} Find Emergency Vet
         </button>
@@ -1497,6 +1531,9 @@ function EmergencyGuide() {
           ☎️ Poison Control
         </a>
       </div>
+      <a href="https://www.pawp.com" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 0", marginBottom: 24, background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 12, color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textDecoration: "none" }}>
+        🩺 Talk to a Vet Online — Pawp Telehealth
+      </a>
       <SectionLabel>First Aid Quick Reference</SectionLabel>
       {FIRST_AID.map(item => (
         <Card key={item.title} style={{ marginBottom: 8, cursor: "pointer" }} onClick={() => setOpen(open === item.title ? null : item.title)}>
@@ -1645,6 +1682,13 @@ function FeedingCalculator() {
             <div style={{ fontSize: 11, color: C.muted, textAlign: "center", fontFamily: "'JetBrains Mono', monospace" }}>{result.calories}</div>
           </div>
           {result.tips?.map((tip, i) => <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.text, marginBottom: 6 }}><span style={{ color: C.accent, flexShrink: 0 }}>•</span>{tip}</div>)}
+          <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+            <SectionLabel>Shop food for {breed}</SectionLabel>
+            <div style={{ display: "flex", gap: 8 }}>
+              <a href={`https://www.chewy.com/s?query=${encodeURIComponent(breed + " dog food")}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>🛒 Chewy</a>
+              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(breed + " dog food")}&tag=woofwell-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>📦 Amazon</a>
+            </div>
+          </div>
         </div>
       )}
     </Card>
@@ -1661,6 +1705,175 @@ function Tools() {
   );
 }
 
+// ─── VET CHAT ────────────────────────────────────────────────────
+function VetChat({ isPro, onUpgrade, dogs }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [selectedDog, setSelectedDog] = useState(dogs[0] || null);
+  const bottomRef = useRef();
+
+  const send = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = { role: "user", content: input.trim() };
+    const newMsgs = [...messages, userMsg];
+    setMessages(newMsgs);
+    setInput("");
+    setLoading(true);
+    const dogCtx = selectedDog ? `The user is asking about their ${selectedDog.age} ${selectedDog.breed} named ${selectedDog.name}.` : "";
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 600, system: `You are a friendly, knowledgeable veterinary AI assistant for WoofWell. ${dogCtx} Give helpful, accurate dog health advice. Always recommend consulting a real vet for serious concerns. Keep responses warm and concise.`, messages: newMsgs }),
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "assistant", content: data.content?.find(b => b.type === "text")?.text || "Sorry, I couldn't respond." }]);
+    } catch { setMessages(prev => [...prev, { role: "assistant", content: "Connection issue. Please try again." }]); }
+    setLoading(false);
+  };
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+
+  if (!isPro) return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <Card style={{ textAlign: "center", padding: "40px 20px", borderColor: C.pro }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, color: C.text, marginBottom: 8 }}>AI Vet Chat</div>
+        <div style={{ color: C.muted, fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>Ask anything about your dog's health. Get instant AI-powered answers, available 24/7.</div>
+        <ActionBtn onClick={onUpgrade} style={{ background: C.pro }}>👑 Unlock with Pro</ActionBtn>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: 0 }}>AI Vet Chat</h2>
+        {dogs.length > 0 && (
+          <select value={selectedDog?.id || ""} onChange={e => setSelectedDog(dogs.find(d => d.id === e.target.value) || null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 12, color: C.text, fontFamily: "'Outfit', sans-serif" }}>
+            <option value="">General</option>
+            {dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        )}
+      </div>
+      {messages.length === 0 && (
+        <Card style={{ marginBottom: 14, background: C.accentDim, borderColor: C.accent + "44" }}>
+          <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}>
+            Ask me anything! For example:<br />
+            • "Is it normal for my dog to eat grass?"<br />
+            • "Signs of hip dysplasia in Labradors?"<br />
+            • "How much water should my dog drink daily?"
+          </div>
+        </Card>
+      )}
+      <div style={{ maxHeight: 380, overflowY: "auto", marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: m.role === "user" ? C.accent : C.card, border: m.role === "user" ? "none" : `1px solid ${C.border}`, color: m.role === "user" ? "#fff" : C.text, fontSize: 13, lineHeight: 1.6, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              {m.content}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display: "flex" }}>
+            <div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: C.card, border: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", gap: 4 }}>{[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: C.muted, animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />)}</div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={`Ask about ${selectedDog?.name || "your dog"}...`}
+          style={{ flex: 1, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" }} />
+        <button onClick={send} disabled={!input.trim() || loading}
+          style={{ padding: "0 18px", background: input.trim() && !loading ? C.accent : C.card2, border: "none", borderRadius: 10, color: input.trim() && !loading ? "#fff" : C.muted, fontSize: 18, cursor: input.trim() && !loading ? "pointer" : "not-allowed", transition: "all 0.15s" }}>↑</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── DOG COMPARE ─────────────────────────────────────────────────
+function DogCompare({ isPro, onUpgrade, dogs }) {
+  const [dogA, setDogA] = useState(dogs[0] || null);
+  const [dogB, setDogB] = useState(dogs[1] || null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const sel = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", width: "100%" };
+
+  if (!isPro) return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <Card style={{ textAlign: "center", padding: "40px 20px", borderColor: C.pro }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>⚖️</div>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, color: C.text, marginBottom: 8 }}>Compare Dogs</div>
+        <div style={{ color: C.muted, fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>Side-by-side health comparison. Perfect for multi-pet households.</div>
+        <ActionBtn onClick={onUpgrade} style={{ background: C.pro }}>👑 Unlock with Pro</ActionBtn>
+      </Card>
+    </div>
+  );
+
+  if (dogs.length < 2) return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🐕🐕</div>
+        <div style={{ color: C.text, fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Add a second dog first</div>
+        <div style={{ color: C.muted, fontSize: 13 }}>You need at least 2 saved dogs to compare.</div>
+      </Card>
+    </div>
+  );
+
+  const compare = async () => {
+    if (!dogA || !dogB) return;
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const text = await callClaude("You are a veterinary expert. Respond with valid JSON only.",
+        `Compare these two dogs: A: ${dogA.age} ${dogA.breed} (${dogA.name}), B: ${dogB.age} ${dogB.breed} (${dogB.name}). JSON: {"categories":["Lifespan","Exercise","Health Risks","Grooming","Diet","Temperament","Ideal Home"],"dogA":{"name":"${dogA.name}","values":["v1","v2","v3","v4","v5","v6","v7"]},"dogB":{"name":"${dogB.name}","values":["v1","v2","v3","v4","v5","v6","v7"]},"summary":"2 sentence comparison"}`
+      );
+      setResult(JSON.parse(text.replace(/```json|```/g, "").trim()));
+    } catch { setError("Comparison failed. Please try again."); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 20px" }}>Compare Dogs</h2>
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}><SectionLabel>Dog A</SectionLabel><select value={dogA?.id || ""} onChange={e => setDogA(dogs.find(d => d.id === e.target.value))} style={sel}>{dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+          <div style={{ flex: 1 }}><SectionLabel>Dog B</SectionLabel><select value={dogB?.id || ""} onChange={e => setDogB(dogs.find(d => d.id === e.target.value))} style={sel}>{dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+        </div>
+        <ActionBtn onClick={compare} disabled={!dogA || !dogB || dogA?.id === dogB?.id} loading={loading}>Compare</ActionBtn>
+        {dogA?.id === dogB?.id && <div style={{ color: C.warn, fontSize: 12, textAlign: "center", marginTop: 8 }}>Select two different dogs</div>}
+        {error && <div style={{ color: C.danger, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
+      </Card>
+      {result && (
+        <div style={{ animation: "fadeUp 0.3s ease" }}>
+          <Card style={{ marginBottom: 14, background: C.accentDim, borderColor: C.accent + "44" }}>
+            <div style={{ fontSize: 13, color: C.text, lineHeight: 1.7 }}>{result.summary}</div>
+          </Card>
+          {result.categories.map((cat, i) => (
+            <Card key={cat} style={{ marginBottom: 8 }}>
+              <SectionLabel>{cat}</SectionLabel>
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ flex: 1, background: C.accentDim, borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 11, color: C.accent, fontWeight: 600, marginBottom: 3 }}>{result.dogA.name}</div>
+                  <div style={{ fontSize: 13, color: C.text }}>{result.dogA.values[i]}</div>
+                </div>
+                <div style={{ flex: 1, background: C.card2, borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 3 }}>{result.dogB.name}</div>
+                  <div style={{ fontSize: 13, color: C.text }}>{result.dogB.values[i]}</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────
 const TABS = [
   { id: "dogs",      label: "My Dogs",    icon: "🐕" },
@@ -1671,6 +1884,8 @@ const TABS = [
   { id: "health",    label: "Health",     icon: "📋" },
   { id: "photo",     label: "Breed ID",   icon: "📸" },
   { id: "symptoms",  label: "Symptoms",   icon: "🩺" },
+  { id: "chat",      label: "Vet Chat",   icon: "💬" },
+  { id: "compare",   label: "Compare",    icon: "⚖️" },
   { id: "tools",     label: "Tools",      icon: "🔧" },
   { id: "emergency", label: "Emergency",  icon: "🚨" },
   { id: "pro",       label: "Pro",        icon: "👑" },
@@ -1768,6 +1983,8 @@ export default function WoofWell() {
         {tab === "health"    && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
         {tab === "photo"     && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
         {tab === "symptoms"  && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
+        {tab === "chat"      && <VetChat isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
+        {tab === "compare"   && <DogCompare isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
         {tab === "tools"     && <Tools />}
         {tab === "emergency" && <EmergencyGuide />}
         {tab === "pro"       && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
