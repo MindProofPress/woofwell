@@ -1686,7 +1686,7 @@ function FeedingCalculator() {
             <SectionLabel>Shop food for {breed}</SectionLabel>
             <div style={{ display: "flex", gap: 8 }}>
               <a href={`https://www.chewy.com/s?query=${encodeURIComponent(breed + " dog food")}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>🛒 Chewy</a>
-              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(breed + " dog food")}&tag=woofwell-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>📦 Amazon</a>
+              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(breed + " dog food")}&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>📦 Amazon</a>
             </div>
           </div>
         </div>
