@@ -43,6 +43,7 @@ const GLOBAL_CSS = `
   .sym-chip { cursor:pointer; transition: all 0.15s; }
   .sym-chip:hover { border-color: ${C.accent} !important; color: ${C.accent} !important; }
   .sym-chip.selected { border-color: ${C.accent} !important; background: ${C.accentDim} !important; color: ${C.accent} !important; }
+  .dog-delete-btn:hover { border-color: ${C.danger} !important; color: ${C.danger} !important; }
 `;
 
 // ─── Scan Limit Hook ──────────────────────────────────────────────
@@ -631,13 +632,117 @@ function SymptomChecker({ isPro, onUpgrade, userId }) {
   );
 }
 
-// ─── HEALTH PROFILE ───────────────────────────────────────────────
-function HealthProfile() {
+// ─── SAVED DOGS ───────────────────────────────────────────────────
+function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
   const [age, setAge] = useState("adult");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleAdd = async () => {
+    if (!name.trim() || !breed.trim()) return;
+    setSaving(true); setError(null);
+    const { error } = await supabase.from("dogs").insert({ user_id: userId, name: name.trim(), breed: breed.trim(), age });
+    if (error) {
+      setError("Could not save dog. Please try again.");
+    } else {
+      setName(""); setBreed(""); setAge("adult"); setShowAdd(false);
+      onDogsChange();
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (dogId) => {
+    await supabase.from("dogs").delete().eq("id", dogId);
+    onDogsChange();
+  };
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: C.text }}>My Dogs</div>
+        <button onClick={() => { setShowAdd(!showAdd); setError(null); }}
+          style={{ background: showAdd ? C.card2 : C.accent, border: "none", borderRadius: 8, padding: "7px 14px", color: showAdd ? C.muted : "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+          {showAdd ? "Cancel" : "+ Add Dog"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <Card style={{ marginBottom: 16, borderColor: C.accent }}>
+          <SectionLabel>Dog's Name</SectionLabel>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Buddy"
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }} />
+          <SectionLabel>Breed</SectionLabel>
+          <input value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Golden Retriever"
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }} />
+          <SectionLabel>Life Stage</SectionLabel>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            {["puppy", "adult", "senior"].map(a => (
+              <button key={a} onClick={() => setAge(a)} style={{
+                flex: 1, padding: "8px 0", borderRadius: 8,
+                border: `1px solid ${age === a ? C.accent : C.border}`,
+                background: age === a ? C.accentDim : C.card2,
+                color: age === a ? C.accent : C.muted,
+                fontSize: 13, fontFamily: "'Outfit', sans-serif",
+                fontWeight: age === a ? 600 : 400, cursor: "pointer", transition: "all 0.15s", textTransform: "capitalize"
+              }}>{a}</button>
+            ))}
+          </div>
+          {error && <div style={{ color: C.danger, fontSize: 13, marginBottom: 10 }}>{error}</div>}
+          <ActionBtn onClick={handleAdd} disabled={!name.trim() || !breed.trim()} loading={saving}>Save Dog</ActionBtn>
+        </Card>
+      )}
+
+      {dogs.length === 0 && !showAdd && (
+        <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🐕</div>
+          <div style={{ color: C.text, fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No dogs saved yet</div>
+          <div style={{ color: C.muted, fontSize: 13 }}>Add your dog's profile to get personalized health insights.</div>
+        </Card>
+      )}
+
+      {dogs.map(dog => (
+        <Card key={dog.id} style={{ marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <PawIcon size={22} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 16, color: C.text }}>{dog.name}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{dog.breed} · <span style={{ textTransform: "capitalize" }}>{dog.age}</span></div>
+              </div>
+            </div>
+            <button className="dog-delete-btn" onClick={() => handleDelete(dog.id)}
+              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>✕</button>
+          </div>
+          <button className="action-btn" onClick={() => onViewProfile(dog)}
+            style={{ width: "100%", marginTop: 12, padding: "10px 0", border: "none", borderRadius: 8, background: C.accent, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+            View Health Profile →
+          </button>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── HEALTH PROFILE ───────────────────────────────────────────────
+function HealthProfile({ selectedDog = null, onClearDog = null }) {
+  const [breed, setBreed] = useState(selectedDog?.breed || "");
+  const [age, setAge] = useState(selectedDog?.age || "adult");
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (selectedDog) {
+      setBreed(selectedDog.breed);
+      setAge(selectedDog.age);
+      setReport(null);
+    }
+  }, [selectedDog?.id]);
 
   const SUGGESTIONS = ["Golden Retriever", "French Bulldog", "German Shepherd", "Labrador", "Poodle", "Beagle", "Husky", "Dachshund", "Bulldog", "Chihuahua"];
 
@@ -687,6 +792,13 @@ function HealthProfile() {
 
   return (
     <div style={{ animation: "fadeUp 0.3s ease" }}>
+      {selectedDog && (
+        <div style={{ background: C.accentDim, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: C.accent, display: "flex", alignItems: "center", gap: 8 }}>
+          <PawIcon size={14} />
+          <span>Profile for <strong>{selectedDog.name}</strong></span>
+          <button onClick={onClearDog} style={{ marginLeft: "auto", background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 12, padding: 0 }}>Clear</button>
+        </div>
+      )}
       <Card style={{ marginBottom: 14 }}>
         <SectionLabel>Dog Breed</SectionLabel>
         <input value={breed} onChange={e => setBreed(e.target.value)} onKeyDown={e => e.key === "Enter" && fetch_()}
@@ -735,7 +847,7 @@ function HealthProfile() {
             </div>
           </div>
           {renderReport()}
-          <button onClick={() => { setReport(null); setBreed(""); }} style={{ width: "100%", padding: "11px 0", marginTop: 4, border: `1px solid ${C.border}`, borderRadius: 10, background: "transparent", color: C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+          <button onClick={() => { setReport(null); setBreed(""); if (onClearDog) onClearDog(); }} style={{ width: "100%", padding: "11px 0", marginTop: 4, border: `1px solid ${C.border}`, borderRadius: 10, background: "transparent", color: C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
             ← New Search
           </button>
         </div>
@@ -746,6 +858,7 @@ function HealthProfile() {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────
 const TABS = [
+  { id: "dogs", label: "My Dogs", icon: "🐕" },
   { id: "health", label: "Health Profile", icon: "📋" },
   { id: "photo", label: "Breed ID", icon: "📸" },
   { id: "symptoms", label: "Symptoms", icon: "🩺" },
@@ -753,18 +866,27 @@ const TABS = [
 ];
 
 export default function WoofWell() {
-  const [tab, setTab] = useState("health");
+  const [tab, setTab] = useState("dogs");
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [dogs, setDogs] = useState([]);
+  const [selectedDog, setSelectedDog] = useState(null);
+
+  const fetchDogs = async (uid) => {
+    const { data } = await supabase.from("dogs").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+    if (data) setDogs(data);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
+      if (session?.user) fetchDogs(session.user.id);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) fetchDogs(session.user.id);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -822,10 +944,11 @@ export default function WoofWell() {
 
       {/* Content */}
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px 60px" }}>
-        {tab === "health" && <HealthProfile />}
+        {tab === "dogs" && <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)} onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }} />}
+        {tab === "health" && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
         {tab === "photo" && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
         {tab === "symptoms" && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
-        {tab === "pro" && <Paywall isPro={isPro} onUnlock={() => { setIsPro(true); setTab("health"); }} />}
+        {tab === "pro" && <Paywall isPro={isPro} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
       </div>
     </div>
   );
