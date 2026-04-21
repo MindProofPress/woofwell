@@ -260,7 +260,9 @@ function Paywall({ onUnlock, isPro, userId }) {
     onUnlock();
   };
 
-  const price = billing === "annual" ? 3.33 : 4.99;
+  const monthly = 4.99;
+  const annual = 3.33;
+  const price = billing === "annual" ? annual : monthly;
   const inputStyle = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 };
 
   if (showCheckout) return (
@@ -323,10 +325,6 @@ function Paywall({ onUnlock, isPro, userId }) {
       <div style={{ color: C.muted, fontSize: 13, marginTop: 6 }}>All features unlocked. Enjoy unlimited access.</div>
     </Card>
   );
-
-  const monthly = 4.99;
-  const annual = 3.33;
-  const price = billing === "annual" ? annual : monthly;
 
   const features = [
     ["📸", "Photo Breed Identifier", "Unlimited scans"],
