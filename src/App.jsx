@@ -1170,14 +1170,510 @@ function VetReminders({ userId, dogs }) {
   );
 }
 
+// ─── WEIGHT TRACKER ───────────────────────────────────────────────
+function WeightTracker({ userId, dogs }) {
+  const [selectedDog, setSelectedDog] = useState(dogs[0]?.id || "");
+  const [logs, setLogs] = useState([]);
+  const [weight, setWeight] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const sel = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" };
+
+  const loadLogs = async (dogId) => {
+    if (!dogId) return;
+    setLoading(true);
+    const { data } = await supabase.from("weight_logs").select("*").eq("user_id", userId).eq("dog_id", dogId).order("logged_at", { ascending: false }).limit(20);
+    if (data) setLogs(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (selectedDog) loadLogs(selectedDog); }, [selectedDog]);
+  useEffect(() => { if (dogs.length > 0 && !selectedDog) setSelectedDog(dogs[0].id); }, [dogs]);
+
+  const handleSave = async () => {
+    if (!weight || !selectedDog) return;
+    setSaving(true);
+    await supabase.from("weight_logs").insert({ user_id: userId, dog_id: selectedDog, weight_lbs: parseFloat(weight), logged_at: date, notes: notes || null });
+    setWeight(""); setNotes("");
+    await loadLogs(selectedDog);
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("weight_logs").delete().eq("id", id);
+    setLogs(prev => prev.filter(l => l.id !== id));
+  };
+
+  const trend = logs.length >= 2 ? (logs[0].weight_lbs > logs[1].weight_lbs ? "up" : logs[0].weight_lbs < logs[1].weight_lbs ? "down" : "same") : null;
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: 0 }}>Weight Log</h2>
+        {trend && <span style={{ fontSize: 13, color: trend === "up" ? C.warn : trend === "down" ? C.success : C.muted }}>{trend === "up" ? "↑ Gaining" : trend === "down" ? "↓ Losing" : "→ Stable"}</span>}
+      </div>
+      <Card style={{ marginBottom: 14 }}>
+        {dogs.length > 1 && (<><SectionLabel>Dog</SectionLabel><select value={selectedDog} onChange={e => setSelectedDog(e.target.value)} style={{ ...sel, marginBottom: 14 }}>{dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></>)}
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}><SectionLabel>Weight (lbs)</SectionLabel><input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 45.5" style={sel} /></div>
+          <div style={{ flex: 1 }}><SectionLabel>Date</SectionLabel><input type="date" value={date} onChange={e => setDate(e.target.value)} style={sel} /></div>
+        </div>
+        <SectionLabel>Notes (optional)</SectionLabel>
+        <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. after vet visit" style={{ ...sel, marginBottom: 14 }} />
+        <ActionBtn onClick={handleSave} disabled={!weight || !selectedDog} loading={saving}>Log Weight</ActionBtn>
+      </Card>
+
+      {logs.length >= 3 && (() => {
+        const recent = [...logs].reverse().slice(-10);
+        const min = Math.min(...recent.map(l => l.weight_lbs));
+        const max = Math.max(...recent.map(l => l.weight_lbs));
+        const range = max - min || 1;
+        const W = 300, H = 60, P = 8;
+        const pts = recent.map((l, i) => `${P + (i / (recent.length - 1)) * (W - P * 2)},${H - P - ((l.weight_lbs - min) / range) * (H - P * 2)}`).join(" ");
+        return (
+          <Card style={{ marginBottom: 14, padding: "14px 16px" }}>
+            <SectionLabel>Trend ({recent.length} entries)</SectionLabel>
+            <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
+              <polyline points={pts} fill="none" stroke={C.accent} strokeWidth="2" strokeLinejoin="round" />
+              {recent.map((l, i) => { const x = P + (i / (recent.length - 1)) * (W - P * 2), y = H - P - ((l.weight_lbs - min) / range) * (H - P * 2); return <circle key={i} cx={x} cy={y} r="3" fill={C.accent} />; })}
+            </svg>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.muted, fontFamily: "'JetBrains Mono', monospace" }}><span>{min} lbs</span><span>{max} lbs</span></div>
+          </Card>
+        );
+      })()}
+
+      {loading ? <div style={{ textAlign: "center", padding: 20 }}><Spinner /></div> : logs.length === 0
+        ? <div style={{ textAlign: "center", color: C.muted, fontSize: 14, padding: 30 }}>No weight entries yet.</div>
+        : logs.map((log, i) => (
+          <Card key={log.id} style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, color: C.text }}>{log.weight_lbs}</span>
+                <span style={{ color: C.muted, fontSize: 13 }}> lbs</span>
+                {i === 0 && logs.length > 1 && <span style={{ marginLeft: 8, fontSize: 11, color: log.weight_lbs > logs[1].weight_lbs ? C.warn : C.success }}>{log.weight_lbs > logs[1].weight_lbs ? "+" : ""}{(log.weight_lbs - logs[1].weight_lbs).toFixed(1)} from last</span>}
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{new Date(log.logged_at + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}{log.notes && ` · ${log.notes}`}</div>
+              </div>
+              <button className="dog-delete-btn" onClick={() => handleDelete(log.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s" }}>✕</button>
+            </div>
+          </Card>
+        ))}
+    </div>
+  );
+}
+
+// ─── VACCINATION RECORD ───────────────────────────────────────────
+const COMMON_VACCINES = ["Rabies", "DHPP", "Bordetella", "Leptospirosis", "Lyme", "Canine Influenza", "Heartworm Test"];
+
+function VaccinationRecord({ userId, dogs }) {
+  const [selectedDog, setSelectedDog] = useState(dogs[0]?.id || "");
+  const [vaccines, setVaccines] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState("");
+  const [dateGiven, setDateGiven] = useState("");
+  const [nextDue, setNextDue] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const sel = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" };
+
+  const loadVaccines = async (dogId) => {
+    if (!dogId) return;
+    setLoading(true);
+    const { data } = await supabase.from("vaccinations").select("*").eq("user_id", userId).eq("dog_id", dogId).order("next_due", { ascending: true });
+    if (data) setVaccines(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (selectedDog) loadVaccines(selectedDog); }, [selectedDog]);
+  useEffect(() => { if (dogs.length > 0 && !selectedDog) setSelectedDog(dogs[0].id); }, [dogs]);
+
+  const handleSave = async () => {
+    if (!name || !selectedDog) return;
+    setSaving(true);
+    await supabase.from("vaccinations").insert({ user_id: userId, dog_id: selectedDog, vaccine_name: name, date_given: dateGiven || null, next_due: nextDue || null, notes: notes || null });
+    setName(""); setDateGiven(""); setNextDue(""); setNotes("");
+    setShowAdd(false);
+    await loadVaccines(selectedDog);
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("vaccinations").delete().eq("id", id);
+    setVaccines(prev => prev.filter(v => v.id !== id));
+  };
+
+  const getStatus = (v) => {
+    if (!v.next_due) return "none";
+    const days = (new Date(v.next_due) - new Date()) / 86400000;
+    return days < 0 ? "overdue" : days <= 30 ? "soon" : "ok";
+  };
+  const statusColor = { overdue: C.danger, soon: C.warn, ok: C.success, none: C.muted };
+  const statusLabel = { overdue: "Overdue", soon: "Due soon", ok: "Up to date", none: "No due date" };
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: 0 }}>Vaccinations</h2>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ background: showAdd ? C.bg : C.accent, border: `1px solid ${showAdd ? C.border : C.accent}`, borderRadius: 8, padding: "8px 14px", color: showAdd ? C.muted : "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>{showAdd ? "Cancel" : "+ Add"}</button>
+      </div>
+
+      {dogs.length > 1 && <Card style={{ marginBottom: 14 }}><SectionLabel>Dog</SectionLabel><select value={selectedDog} onChange={e => setSelectedDog(e.target.value)} style={sel}>{dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Card>}
+
+      {showAdd && (
+        <Card style={{ marginBottom: 14, borderColor: C.accent }}>
+          <SectionLabel>Quick Select</SectionLabel>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            {COMMON_VACCINES.map(v => <button key={v} onClick={() => setName(v)} className="chip" style={{ background: name === v ? C.accentDim : C.bg, border: `1px solid ${name === v ? C.accent : C.border}`, borderRadius: 16, padding: "4px 10px", fontSize: 12, color: name === v ? C.accent : C.muted, fontFamily: "'Outfit', sans-serif", cursor: "pointer", transition: "all 0.15s" }}>{v}</button>)}
+          </div>
+          <SectionLabel>Vaccine Name</SectionLabel>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Or enter custom vaccine..." style={{ ...sel, marginBottom: 14 }} />
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}><SectionLabel>Date Given</SectionLabel><input type="date" value={dateGiven} onChange={e => setDateGiven(e.target.value)} style={sel} /></div>
+            <div style={{ flex: 1 }}><SectionLabel>Next Due</SectionLabel><input type="date" value={nextDue} onChange={e => setNextDue(e.target.value)} style={sel} /></div>
+          </div>
+          <SectionLabel>Notes (optional)</SectionLabel>
+          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Dr. Smith's clinic" style={{ ...sel, marginBottom: 14 }} />
+          <ActionBtn onClick={handleSave} disabled={!name} loading={saving}>Save Vaccine</ActionBtn>
+        </Card>
+      )}
+
+      {loading ? <div style={{ textAlign: "center", padding: 20 }}><Spinner /></div> : vaccines.length === 0
+        ? <div style={{ textAlign: "center", color: C.muted, fontSize: 14, padding: 30 }}>No vaccinations recorded yet.</div>
+        : vaccines.map(v => {
+          const s = getStatus(v);
+          return (
+            <Card key={v.id} style={{ marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{v.vaccine_name}</span>
+                    <span style={{ fontSize: 10, background: statusColor[s] + "22", color: statusColor[s], border: `1px solid ${statusColor[s]}44`, borderRadius: 10, padding: "1px 7px", fontFamily: "'JetBrains Mono', monospace" }}>{statusLabel[s]}</span>
+                  </div>
+                  {v.date_given && <div style={{ fontSize: 12, color: C.muted }}>Given: {new Date(v.date_given + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>}
+                  {v.next_due && <div style={{ fontSize: 12, color: statusColor[s] }}>Due: {new Date(v.next_due + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>}
+                  {v.notes && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{v.notes}</div>}
+                </div>
+                <button className="dog-delete-btn" onClick={() => handleDelete(v.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>✕</button>
+              </div>
+            </Card>
+          );
+        })}
+    </div>
+  );
+}
+
+// ─── SYMPTOM JOURNAL ──────────────────────────────────────────────
+function SymptomJournal({ userId, dogs }) {
+  const [filterDog, setFilterDog] = useState("");
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [mood, setMood] = useState("good");
+  const [notes, setNotes] = useState("");
+  const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dogForEntry, setDogForEntry] = useState("");
+  const [saving, setSaving] = useState(false);
+  const sel = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" };
+
+  const loadEntries = async () => {
+    setLoading(true);
+    let q = supabase.from("symptom_journal").select("*, dogs(name)").eq("user_id", userId).order("entry_date", { ascending: false }).limit(30);
+    if (filterDog) q = q.eq("dog_id", filterDog);
+    const { data } = await q;
+    if (data) setEntries(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadEntries(); }, [filterDog]);
+
+  const handleSave = async () => {
+    if (!notes.trim()) return;
+    setSaving(true);
+    await supabase.from("symptom_journal").insert({ user_id: userId, dog_id: dogForEntry || null, entry_date: entryDate, mood, notes: notes.trim() });
+    setNotes(""); setMood("good"); setShowAdd(false);
+    await loadEntries();
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("symptom_journal").delete().eq("id", id);
+    setEntries(prev => prev.filter(e => e.id !== id));
+  };
+
+  const moodEmoji = { good: "😊", fair: "😐", poor: "😟" };
+  const moodColor = { good: C.success, fair: C.warn, poor: C.danger };
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: 0 }}>Health Journal</h2>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ background: showAdd ? C.bg : C.accent, border: `1px solid ${showAdd ? C.border : C.accent}`, borderRadius: 8, padding: "8px 14px", color: showAdd ? C.muted : "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>{showAdd ? "Cancel" : "+ Log Entry"}</button>
+      </div>
+
+      {showAdd && (
+        <Card style={{ marginBottom: 14, borderColor: C.accent }}>
+          {dogs.length > 0 && (<><SectionLabel>Dog (optional)</SectionLabel><select value={dogForEntry} onChange={e => setDogForEntry(e.target.value)} style={{ ...sel, marginBottom: 14 }}><option value="">General / all dogs</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></>)}
+          <SectionLabel>How is your dog feeling?</SectionLabel>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {["good", "fair", "poor"].map(m => (
+              <button key={m} onClick={() => setMood(m)} style={{ flex: 1, padding: "10px 0", border: `1px solid ${mood === m ? moodColor[m] : C.border}`, borderRadius: 10, background: mood === m ? moodColor[m] + "22" : C.bg, color: mood === m ? moodColor[m] : C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer", transition: "all 0.15s" }}>
+                {moodEmoji[m]} {m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+          <SectionLabel>Date</SectionLabel>
+          <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} style={{ ...sel, marginBottom: 14 }} />
+          <SectionLabel>Notes</SectionLabel>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Describe symptoms, behavior, appetite, energy level..." rows={3} style={{ ...sel, resize: "vertical", marginBottom: 14 }} />
+          <ActionBtn onClick={handleSave} disabled={!notes.trim()} loading={saving}>Save Entry</ActionBtn>
+        </Card>
+      )}
+
+      {dogs.length > 1 && !showAdd && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+          {[{ id: "", name: "All" }, ...dogs].map(d => (
+            <button key={d.id} onClick={() => setFilterDog(d.id)} className="chip" style={{ background: filterDog === d.id ? C.accentDim : C.bg, border: `1px solid ${filterDog === d.id ? C.accent : C.border}`, borderRadius: 16, padding: "4px 12px", fontSize: 12, color: filterDog === d.id ? C.accent : C.muted, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>{d.name}</button>
+          ))}
+        </div>
+      )}
+
+      {loading ? <div style={{ textAlign: "center", padding: 20 }}><Spinner /></div> : entries.length === 0
+        ? <div style={{ textAlign: "center", color: C.muted, fontSize: 14, padding: 30 }}>No journal entries yet.</div>
+        : entries.map(e => (
+          <Card key={e.id} style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 18 }}>{moodEmoji[e.mood]}</span>
+                  <span style={{ fontSize: 12, color: moodColor[e.mood], fontWeight: 600, textTransform: "capitalize" }}>{e.mood}</span>
+                  <span style={{ fontSize: 11, color: C.muted, fontFamily: "'JetBrains Mono', monospace" }}>{new Date(e.entry_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                  {e.dogs?.name && <span style={{ fontSize: 11, color: C.muted }}>· {e.dogs.name}</span>}
+                </div>
+                <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{e.notes}</div>
+              </div>
+              <button className="dog-delete-btn" onClick={() => handleDelete(e.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s", flexShrink: 0, marginLeft: 8 }}>✕</button>
+            </div>
+          </Card>
+        ))}
+    </div>
+  );
+}
+
+// ─── EMERGENCY GUIDE ──────────────────────────────────────────────
+const FIRST_AID = [
+  { title: "Choking", icon: "🫁", steps: ["Look in the mouth — remove visible objects with fingers if safe to do so", "Small dogs: hold upside down, gravity may dislodge the object", "Large dogs: stand behind, place hands below ribcage, give 5 firm abdominal thrusts upward", "If unconscious: close mouth and breathe into nose — get to emergency vet immediately", "Do not leave the dog alone — monitor breathing at all times"] },
+  { title: "Poisoning", icon: "☠️", steps: ["Call ASPCA Poison Control: (888) 426-4435 (fee may apply)", "Do NOT induce vomiting unless specifically instructed by a vet", "Bring the packaging or a sample of the substance to the vet", "Common toxins: grapes, raisins, xylitol, chocolate, onions, garlic, ibuprofen", "Symptoms to watch: vomiting, excessive drooling, seizures, collapse, pale gums"] },
+  { title: "Bleeding", icon: "🩹", steps: ["Apply firm, direct pressure with a clean cloth for at least 5 minutes", "Do not remove the cloth — add more material on top if soaked through", "Elevate the limb above heart level if possible", "For spurting blood: apply a tourniquet above the wound only as a last resort", "Seek vet care for any deep, non-stopping, or puncture wounds"] },
+  { title: "Heat Stroke", icon: "🌡️", steps: ["Move to shade or air conditioning immediately", "Apply cool (not ice cold) water to paw pads, groin, and armpits", "Offer small sips of cool water to drink if conscious", "Fan the dog while keeping the coat wet", "Rush to emergency vet — heat stroke causes organ failure and is life-threatening"] },
+  { title: "Seizures", icon: "⚡", steps: ["Stay calm — do NOT put your hands near the mouth", "Move nearby furniture to prevent injury", "Time the seizure from start to finish", "Keep the room dark and quiet to reduce stimulation", "Seizure lasting >5 minutes or multiple seizures back to back: emergency vet immediately"] },
+  { title: "Burns", icon: "🔥", steps: ["Run cool (not cold) water over the burn for at least 10 minutes", "Do not apply ice, butter, toothpaste, or any home remedy", "Cover the area loosely with a clean, damp bandage", "Do not pop or break any blisters that form", "See a vet for any burn larger than a quarter or on the face/paws"] },
+  { title: "Broken Bones", icon: "🦴", steps: ["Do not attempt to set, straighten, or splint the bone yourself", "Keep the dog as still and calm as possible", "Muzzle gently if in pain — dogs bite instinctively when hurt", "Slide a flat board under the dog to transport without bending", "Go directly to an emergency vet"] },
+  { title: "Eye Injuries", icon: "👁️", steps: ["Do not rub or apply pressure to the eye", "Flush gently with saline solution or clean lukewarm water for 5 minutes", "Prevent the dog from pawing at the eye — use a cone if available", "Do not attempt to remove any embedded object yourself", "See a vet within hours — eye injuries deteriorate rapidly without treatment"] },
+];
+
+function EmergencyGuide() {
+  const [open, setOpen] = useState(null);
+  const [locating, setLocating] = useState(false);
+
+  const findVets = () => {
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => { window.open(`https://www.google.com/maps/search/emergency+veterinary+clinic/@${coords.latitude},${coords.longitude},13z`, "_blank"); setLocating(false); },
+      () => { window.open("https://www.google.com/maps/search/emergency+veterinary+clinic+near+me", "_blank"); setLocating(false); }
+    );
+  };
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Emergency</h2>
+      <p style={{ color: C.muted, fontSize: 13, margin: "0 0 20px" }}>Quick access to emergency resources and first aid guidance.</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+        <button onClick={findVets} disabled={locating} style={{ flex: 1, padding: "14px 0", background: C.danger, border: "none", borderRadius: 12, color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          {locating ? <Spinner /> : "📍"} Find Emergency Vet
+        </button>
+        <a href="tel:8884264435" style={{ flex: 1, padding: "14px 0", background: C.warn, border: "none", borderRadius: 12, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none" }}>
+          ☎️ Poison Control
+        </a>
+      </div>
+      <SectionLabel>First Aid Quick Reference</SectionLabel>
+      {FIRST_AID.map(item => (
+        <Card key={item.title} style={{ marginBottom: 8, cursor: "pointer" }} onClick={() => setOpen(open === item.title ? null : item.title)}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>{item.icon}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{item.title}</span>
+            </div>
+            <span style={{ color: C.muted, fontSize: 12, display: "inline-block", transform: open === item.title ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
+          </div>
+          {open === item.title && (
+            <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+              {item.steps.map((step, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+                  <span style={{ width: 20, height: 20, borderRadius: "50%", background: C.accentDim, color: C.accent, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>{i + 1}</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{step}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── TOOLS (Dog Age Calculator + Feeding Calculator) ──────────────
+function DogAgeCalculator() {
+  const [dogYears, setDogYears] = useState("");
+  const [size, setSize] = useState("medium");
+  const [humanAge, setHumanAge] = useState(null);
+  const sel = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" };
+
+  const calculate = () => {
+    const y = parseFloat(dogYears);
+    if (!y || y <= 0) return;
+    const tables = {
+      small:  [15, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76],
+      medium: [15, 24, 29, 34, 38, 42, 46, 51, 55, 59, 63, 67, 72, 76, 80],
+      large:  [15, 24, 31, 38, 45, 49, 56, 64, 71, 79, 88, 97, 105, 115, 120],
+    };
+    const tbl = tables[size];
+    const idx = Math.min(Math.floor(y) - 1, tbl.length - 1);
+    const frac = y - Math.floor(y);
+    const base = tbl[Math.max(0, idx)];
+    const next = tbl[Math.min(idx + 1, tbl.length - 1)];
+    setHumanAge(Math.round(base + frac * (next - base)));
+  };
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <span style={{ fontSize: 20 }}>🐶</span>
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: C.text }}>Dog Age Calculator</span>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1 }}><SectionLabel>Dog's Age (years)</SectionLabel><input type="number" value={dogYears} onChange={e => setDogYears(e.target.value)} placeholder="e.g. 4" style={sel} /></div>
+        <div style={{ flex: 1 }}><SectionLabel>Size</SectionLabel>
+          <select value={size} onChange={e => setSize(e.target.value)} style={sel}>
+            <option value="small">Small (&lt;20 lbs)</option>
+            <option value="medium">Medium (20–50 lbs)</option>
+            <option value="large">Large (&gt;50 lbs)</option>
+          </select>
+        </div>
+      </div>
+      <ActionBtn onClick={calculate} disabled={!dogYears}>Calculate Human Age</ActionBtn>
+      {humanAge !== null && (
+        <div style={{ textAlign: "center", marginTop: 16, padding: "16px 0", background: C.accentDim, borderRadius: 10 }}>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 48, fontWeight: 700, color: C.accent, lineHeight: 1 }}>{humanAge}</div>
+          <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>human years</div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function FeedingCalculator() {
+  const [breed, setBreed] = useState("");
+  const [weight, setWeight] = useState("");
+  const [age, setAge] = useState("adult");
+  const [activity, setActivity] = useState("moderate");
+  const [foodType, setFoodType] = useState("dry");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const sel = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" };
+
+  const calculate = async () => {
+    if (!breed || !weight) return;
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const text = await callClaude(
+        "You are a veterinary nutrition expert. Be concise and precise. Always respond with valid JSON only.",
+        `Feeding recommendation for: Breed: ${breed}, Weight: ${weight} lbs, Life stage: ${age}, Activity: ${activity}, Food type: ${foodType}. Respond in JSON: {"dailyAmount":"X cups","mealsPerDay":2,"amMeal":"X cups","pmMeal":"X cups","calories":"~X kcal/day","tips":["tip1","tip2","tip3"]}`
+      );
+      setResult(JSON.parse(text.replace(/```json|```/g, "").trim()));
+    } catch { setError("Failed to calculate. Please try again."); }
+    setLoading(false);
+  };
+
+  return (
+    <Card>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <span style={{ fontSize: 20 }}>🍖</span>
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: C.text }}>Feeding Calculator</span>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1 }}><SectionLabel>Breed</SectionLabel><input value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Labrador" style={sel} /></div>
+        <div style={{ flex: 1 }}><SectionLabel>Weight (lbs)</SectionLabel><input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 65" style={sel} /></div>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1 }}><SectionLabel>Life Stage</SectionLabel>
+          <select value={age} onChange={e => setAge(e.target.value)} style={sel}>
+            <option value="puppy">Puppy</option><option value="adult">Adult</option><option value="senior">Senior</option>
+          </select>
+        </div>
+        <div style={{ flex: 1 }}><SectionLabel>Activity</SectionLabel>
+          <select value={activity} onChange={e => setActivity(e.target.value)} style={sel}>
+            <option value="low">Low</option><option value="moderate">Moderate</option><option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <SectionLabel>Food Type</SectionLabel>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {["dry", "wet", "raw", "mixed"].map(t => <button key={t} onClick={() => setFoodType(t)} className="chip" style={{ flex: 1, padding: "8px 0", border: `1px solid ${foodType === t ? C.accent : C.border}`, borderRadius: 8, background: foodType === t ? C.accentDim : C.bg, color: foodType === t ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", cursor: "pointer", textTransform: "capitalize", transition: "all 0.15s" }}>{t}</button>)}
+      </div>
+      <ActionBtn onClick={calculate} disabled={!breed || !weight} loading={loading}>Calculate Feeding Plan</ActionBtn>
+      {error && <div style={{ color: C.danger, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
+      {result && (
+        <div style={{ marginTop: 16, animation: "fadeUp 0.3s ease" }}>
+          <div style={{ background: C.accentDim, borderRadius: 10, padding: 16, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 10 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: C.accent }}>{result.dailyAmount}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>per day</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: C.text }}>{result.mealsPerDay}x</div>
+                <div style={{ fontSize: 11, color: C.muted }}>meals/day</div>
+              </div>
+              <div style={{ textAlign: "center", fontSize: 12, color: C.muted }}>
+                <div>🌅 {result.amMeal}</div>
+                <div style={{ marginTop: 4 }}>🌙 {result.pmMeal}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, textAlign: "center", fontFamily: "'JetBrains Mono', monospace" }}>{result.calories}</div>
+          </div>
+          {result.tips?.map((tip, i) => <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.text, marginBottom: 6 }}><span style={{ color: C.accent, flexShrink: 0 }}>•</span>{tip}</div>)}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function Tools() {
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 20px" }}>Tools</h2>
+      <DogAgeCalculator />
+      <FeedingCalculator />
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────
 const TABS = [
-  { id: "dogs", label: "My Dogs", icon: "🐕" },
-  { id: "reminders", label: "Reminders", icon: "🔔" },
-  { id: "health", label: "Health Profile", icon: "📋" },
-  { id: "photo", label: "Breed ID", icon: "📸" },
-  { id: "symptoms", label: "Symptoms", icon: "🩺" },
-  { id: "pro", label: "Pro", icon: "👑" },
+  { id: "dogs",      label: "My Dogs",    icon: "🐕" },
+  { id: "reminders", label: "Reminders",  icon: "🔔" },
+  { id: "weight",    label: "Weight",     icon: "📊" },
+  { id: "vaccines",  label: "Vaccines",   icon: "💉" },
+  { id: "journal",   label: "Journal",    icon: "📝" },
+  { id: "health",    label: "Health",     icon: "📋" },
+  { id: "photo",     label: "Breed ID",   icon: "📸" },
+  { id: "symptoms",  label: "Symptoms",   icon: "🩺" },
+  { id: "tools",     label: "Tools",      icon: "🔧" },
+  { id: "emergency", label: "Emergency",  icon: "🚨" },
+  { id: "pro",       label: "Pro",        icon: "👑" },
 ];
 
 export default function WoofWell() {
@@ -1264,12 +1760,17 @@ export default function WoofWell() {
 
       {/* Content */}
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px 60px" }}>
-        {tab === "dogs" && <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)} onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }} />}
+        {tab === "dogs"      && <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)} onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }} />}
         {tab === "reminders" && <VetReminders userId={user.id} dogs={dogs} />}
-        {tab === "health" && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
-        {tab === "photo" && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
-        {tab === "symptoms" && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
-        {tab === "pro" && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
+        {tab === "weight"    && <WeightTracker userId={user.id} dogs={dogs} />}
+        {tab === "vaccines"  && <VaccinationRecord userId={user.id} dogs={dogs} />}
+        {tab === "journal"   && <SymptomJournal userId={user.id} dogs={dogs} />}
+        {tab === "health"    && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
+        {tab === "photo"     && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
+        {tab === "symptoms"  && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
+        {tab === "tools"     && <Tools />}
+        {tab === "emergency" && <EmergencyGuide />}
+        {tab === "pro"       && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
       </div>
     </div>
   );
