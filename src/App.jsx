@@ -3,19 +3,19 @@ import { supabase } from "./supabase";
 
 // ─── Design Tokens ───────────────────────────────────────────────
 const C = {
-  bg: "#0A0908",
-  card: "#13120F",
-  card2: "#1B1917",
-  border: "#272420",
+  bg: "#FAF6F0",
+  card: "#FFFFFF",
+  card2: "#F3EDE4",
+  border: "#E2D5C5",
   accent: "#E8622A",
-  accentDim: "#2A1A10",
-  text: "#F0EBE1",
-  muted: "#7A7268",
-  success: "#4CAF7D",
-  warn: "#E8A82A",
-  danger: "#E85A2A",
-  pro: "#C9A84C",
-  proDim: "#1E1A0E",
+  accentDim: "#FEF0E8",
+  text: "#1E1108",
+  muted: "#8B7355",
+  success: "#2A7A50",
+  warn: "#B8750A",
+  danger: "#C0392B",
+  pro: "#9A7010",
+  proDim: "#FBF4E0",
 };
 
 // ─── Global Styles ────────────────────────────────────────────────
@@ -26,24 +26,25 @@ const GLOBAL_CSS = `
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
   * { box-sizing: border-box; }
-  body { margin: 0; }
-  ::placeholder { color: #3A3830; }
+  body { margin: 0; background: #FAF6F0; }
+  ::placeholder { color: #C0AE98; }
   input, select, textarea { outline: none; }
   ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: ${C.bg}; }
-  ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 2px; }
-  .tab-btn:hover { color: ${C.text} !important; }
-  .chip:hover { border-color: ${C.accent} !important; color: ${C.text} !important; background: ${C.accentDim} !important; }
-  .pro-btn:hover { background: #B8963C !important; }
+  ::-webkit-scrollbar-track { background: #F3EDE4; }
+  ::-webkit-scrollbar-thumb { background: #D0C4B4; border-radius: 2px; }
+  .tab-btn:hover { color: #1E1108 !important; }
+  .chip:hover { border-color: ${C.accent} !important; color: ${C.accent} !important; background: ${C.accentDim} !important; }
+  .pro-btn:hover { background: #7A5808 !important; }
   .free-btn:hover { border-color: ${C.accent} !important; }
   .action-btn:hover { background: #C9541F !important; }
-  .action-btn:disabled { opacity: 0.4; cursor: not-allowed !important; }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed !important; }
   .back-btn:hover { color: ${C.text} !important; }
   .upload-area:hover { border-color: ${C.accent} !important; background: ${C.accentDim} !important; }
   .sym-chip { cursor:pointer; transition: all 0.15s; }
   .sym-chip:hover { border-color: ${C.accent} !important; color: ${C.accent} !important; }
   .sym-chip.selected { border-color: ${C.accent} !important; background: ${C.accentDim} !important; color: ${C.accent} !important; }
   .dog-delete-btn:hover { border-color: ${C.danger} !important; color: ${C.danger} !important; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.3); }
 `;
 
 // ─── Scan Limit Hook ──────────────────────────────────────────────
@@ -130,7 +131,7 @@ const Spinner = () => (
 // ─── Shared Components ────────────────────────────────────────────
 function Card({ children, style = {} }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px 22px", ...style }}>
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px 22px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", ...style }}>
       {children}
     </div>
   );
