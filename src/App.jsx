@@ -904,9 +904,156 @@ function HealthProfile({ selectedDog = null, onClearDog = null }) {
   );
 }
 
+// ─── VET REMINDERS ────────────────────────────────────────────────
+function VetReminders({ userId, dogs }) {
+  const [reminders, setReminders] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [dogId, setDogId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadReminders = async () => {
+    const { data } = await supabase.from("vet_reminders").select("*, dogs(name)").eq("user_id", userId).order("reminder_date", { ascending: true });
+    if (data) setReminders(data);
+  };
+
+  useEffect(() => { loadReminders(); }, []);
+
+  const handleAdd = async () => {
+    if (!title.trim() || !date) return;
+    setSaving(true); setError(null);
+    const { error } = await supabase.from("vet_reminders").insert({ user_id: userId, title: title.trim(), reminder_date: date, dog_id: dogId || null, notes: notes.trim() });
+    if (error) { setError("Could not save reminder."); } else { setTitle(""); setDate(""); setDogId(""); setNotes(""); setShowAdd(false); loadReminders(); }
+    setSaving(false);
+  };
+
+  const handleToggle = async (id, completed) => {
+    await supabase.from("vet_reminders").update({ completed: !completed }).eq("id", id);
+    loadReminders();
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("vet_reminders").delete().eq("id", id);
+    loadReminders();
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const getStatus = (dateStr, completed) => {
+    if (completed) return { color: C.success };
+    if (dateStr < today) return { color: C.danger, label: "Overdue" };
+    if (dateStr <= weekFromNow) return { color: C.warn, label: "Soon" };
+    return { color: C.border };
+  };
+
+  const formatDate = (d) => new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+  const upcoming = reminders.filter(r => !r.completed);
+  const done = reminders.filter(r => r.completed);
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: C.text }}>Vet Reminders</div>
+        <button onClick={() => { setShowAdd(!showAdd); setError(null); }}
+          style={{ background: showAdd ? C.card2 : C.accent, border: "none", borderRadius: 8, padding: "7px 14px", color: showAdd ? C.muted : "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+          {showAdd ? "Cancel" : "+ Add Reminder"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <Card style={{ marginBottom: 16, borderColor: C.accent }}>
+          <SectionLabel>Title</SectionLabel>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Annual checkup, Rabies vaccine..."
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }} />
+          <SectionLabel>Date</SectionLabel>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14, colorScheme: "dark" }} />
+          {dogs.length > 0 && (
+            <>
+              <SectionLabel>Dog (optional)</SectionLabel>
+              <select value={dogId} onChange={e => setDogId(e.target.value)}
+                style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: dogId ? C.text : C.muted, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }}>
+                <option value="">No specific dog</option>
+                {dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </>
+          )}
+          <SectionLabel>Notes (optional)</SectionLabel>
+          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any details..."
+            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 16 }} />
+          {error && <div style={{ color: C.danger, fontSize: 13, marginBottom: 10 }}>{error}</div>}
+          <ActionBtn onClick={handleAdd} disabled={!title.trim() || !date} loading={saving}>Save Reminder</ActionBtn>
+        </Card>
+      )}
+
+      {reminders.length === 0 && !showAdd && (
+        <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
+          <div style={{ color: C.text, fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No reminders yet</div>
+          <div style={{ color: C.muted, fontSize: 13 }}>Add vet appointments, vaccinations, and checkup alerts.</div>
+        </Card>
+      )}
+
+      {upcoming.map(r => {
+        const { color, label } = getStatus(r.reminder_date, r.completed);
+        return (
+          <Card key={r.id} style={{ marginBottom: 10, borderLeft: `3px solid ${color}` }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600, fontSize: 15, color: C.text }}>{r.title}</span>
+                  {label && <span style={{ fontSize: 10, background: color + "22", border: `1px solid ${color}44`, borderRadius: 10, padding: "1px 7px", color, fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: C.muted }}>
+                  📅 {formatDate(r.reminder_date)}{r.dogs?.name && <span> · 🐕 {r.dogs.name}</span>}
+                </div>
+                {r.notes && <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{r.notes}</div>}
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button onClick={() => handleToggle(r.id, r.completed)} title="Mark done"
+                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.success, fontSize: 14, cursor: "pointer" }}>✓</button>
+                <button className="dog-delete-btn" onClick={() => handleDelete(r.id)}
+                  style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s" }}>✕</button>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+
+      {done.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <SectionLabel>Completed</SectionLabel>
+          {done.map(r => (
+            <Card key={r.id} style={{ marginBottom: 8, opacity: 0.5 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 14, color: C.text, textDecoration: "line-through" }}>{r.title}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>{formatDate(r.reminder_date)}{r.dogs?.name && ` · ${r.dogs.name}`}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => handleToggle(r.id, r.completed)} title="Reopen"
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.muted, fontSize: 12, cursor: "pointer" }}>↩</button>
+                  <button className="dog-delete-btn" onClick={() => handleDelete(r.id)}
+                    style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s" }}>✕</button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────
 const TABS = [
   { id: "dogs", label: "My Dogs", icon: "🐕" },
+  { id: "reminders", label: "Reminders", icon: "🔔" },
   { id: "health", label: "Health Profile", icon: "📋" },
   { id: "photo", label: "Breed ID", icon: "📸" },
   { id: "symptoms", label: "Symptoms", icon: "🩺" },
@@ -993,6 +1140,7 @@ export default function WoofWell() {
       {/* Content */}
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px 60px" }}>
         {tab === "dogs" && <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)} onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }} />}
+        {tab === "reminders" && <VetReminders userId={user.id} dogs={dogs} />}
         {tab === "health" && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
         {tab === "photo" && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
         {tab === "symptoms" && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
