@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx netlify-cli *)",
+      "Bash(npx --yes netlify-cli status)",
+      "Bash(npx --yes netlify-cli deploy --dir=dist)",
+      "Bash(npx --yes netlify-cli deploy --dir=dist --no-open)"
     ]
   }
 }

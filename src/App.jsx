@@ -1874,6 +1874,373 @@ function DogCompare({ isPro, onUpgrade, dogs }) {
   );
 }
 
+// ─── VET BILL ANALYZER ───────────────────────────────────────────
+const VET_SAMPLE = `PATIENT: Max (Golden Retriever, 4yrs)
+PROVIDER: Sunrise Animal Hospital  DATE: 04/15/2026
+
+SERVICES:
+99213 - Office Examination (Level 3)       $185.00
+99213 - Office Examination (Level 3)       $185.00
+80053 - Comprehensive Blood Panel          $220.00
+V70.0  - Wellness Exam                     $145.00
+V03.82 - Rabies Vaccine                     $45.00
+99070  - Medical Supplies                  $95.00
+A4550  - Surgical Tray                    $110.00
+Hospitalization Fee (2hrs)               $180.00
+Facility Fee                             $125.00
+
+SUBTOTAL:                               $1,290.00
+AMOUNT DUE:                             $1,290.00`;
+
+async function callClaudeVet(prompt, maxTokens = 2000) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  const text = data.content?.find(b => b.type === "text")?.text;
+  if (!text) throw new Error(data.error?.message || "No response from AI");
+  return text;
+}
+
+function VetBillAnalyzer({ isPro, onUpgrade, userId, dogs }) {
+  const [step, setStep]       = useState("input");
+  const [billText, setBillText] = useState("");
+  const [analysis, setAnalysis] = useState(null);
+  const [letter, setLetter]   = useState("");
+  const [script, setScript]   = useState("");
+  const [error, setError]     = useState("");
+  const [history, setHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`ww_vetbill_${userId}`) || "[]"); }
+    catch { return []; }
+  });
+  const [tracker, setTracker] = useState({});
+
+  const inp = {
+    width: "100%", background: C.bg, border: `1px solid ${C.border}`,
+    borderRadius: 10, padding: "10px 14px", fontSize: 13,
+    color: C.text, fontFamily: "'Outfit', sans-serif",
+  };
+
+  function saveHistory(bill, result) {
+    const entry = {
+      id: Date.now(), date: new Date().toLocaleDateString(),
+      preview: bill.slice(0, 100), savings: result.totalSavingsPotential,
+      issues: result.flaggedCharges?.length || 0, analysis: result, billText: bill,
+    };
+    const updated = [entry, ...history].slice(0, 10);
+    setHistory(updated);
+    localStorage.setItem(`ww_vetbill_${userId}`, JSON.stringify(updated));
+  }
+
+  async function analyzeBill() {
+    if (!billText.trim()) return;
+    setStep("analyzing"); setError(""); setTracker({});
+    try {
+      const raw = await callClaudeVet(`You are a veterinary billing expert and pet owner advocate. Analyze this vet bill for errors, overcharges, and negotiation opportunities.
+
+Return ONLY valid JSON:
+{
+  "totalBilled": "dollar amount",
+  "flaggedCharges": [
+    { "description": "...", "amount": "$X", "issue": "why flagged", "savingsPotential": "$X", "action": "what to do", "severity": "high|medium|low" }
+  ],
+  "totalSavingsPotential": "$X",
+  "summary": "2-3 sentences",
+  "negotiationStrength": "weak|moderate|strong",
+  "topTips": ["tip1", "tip2", "tip3"],
+  "chargeBreakdown": [{ "category": "...", "amount": 100, "flagged": true }]
+}
+
+Common vet billing issues: duplicate exam fees, bundled services charged separately, unnecessary supplies, inflated facility fees, CPT codes normally used for humans applied to pets, wellness visit double-billed as sick visit.
+
+Vet bill:
+${billText}`);
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("Could not parse response");
+      const result = JSON.parse(match[0]);
+      setAnalysis(result);
+      saveHistory(billText, result);
+      setStep("results");
+    } catch (e) {
+      setError(e.message);
+      setStep("input");
+    }
+  }
+
+  async function generateLetter() {
+    if (!isPro) { onUpgrade(); return; }
+    setStep("analyzing");
+    try {
+      const text = await callClaudeVet(`Write a professional veterinary bill dispute letter for a pet owner. Be firm but polite. Reference specific overcharges found. Ask for itemized review. Mention that pet owners have the right to itemized bills and to question any charge.
+
+Include [YOUR NAME], [YOUR ADDRESS], [DATE], [CLINIC NAME], [ACCOUNT NUMBER] placeholders.
+
+Analysis: ${JSON.stringify(analysis)}
+Bill: ${billText.slice(0, 500)}`);
+      setLetter(text);
+      setStep("letter");
+    } catch (e) { setError(e.message); setStep("results"); }
+  }
+
+  async function generateScript() {
+    if (!isPro) { onUpgrade(); return; }
+    setStep("analyzing");
+    try {
+      const text = await callClaudeVet(`Write a phone negotiation script for a pet owner disputing a vet bill. Include: opening, key talking points per flagged charge, responses to common pushback, how to ask for a discount or payment plan, what to document. Use [PET OWNER NAME] placeholder.
+
+Analysis: ${JSON.stringify(analysis)}`);
+      setScript(text);
+      setStep("phone");
+    } catch (e) { setError(e.message); setStep("results"); }
+  }
+
+  function reset() { setStep("input"); setAnalysis(null); setBillText(""); setTracker({}); setError(""); }
+
+  const SEV = { high: C.danger, medium: C.warn, low: C.muted };
+
+  // ── Input Screen ──────────────────────────────────────────────────
+  if (step === "input" || step === "analyzing") return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+        🐾 Vet Bill Analyzer
+      </div>
+      <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
+        Paste your vet bill below. AI finds errors, duplicates, and overcharges — then writes your dispute letter.
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 20 }}>
+        {[["80%","bills have errors"],["$420","avg vet savings"],["Pro","letter + script"]].map(([v,l]) => (
+          <Card key={l} style={{ textAlign: "center", padding: "12px 8px" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.accent }}>{v}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{l}</div>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button className="upload-area" onClick={() => setBillText(VET_SAMPLE)}
+            style={{ flex: 1, padding: "9px 0", border: `1px dashed ${C.border}`, borderRadius: 8, background: "transparent", fontSize: 12, color: C.muted, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            Try Sample Bill
+          </button>
+        </div>
+        <textarea
+          value={billText}
+          onChange={e => setBillText(e.target.value)}
+          placeholder="Paste your vet bill here — charges, procedure codes, amounts..."
+          style={{ ...inp, minHeight: 180, resize: "vertical", fontFamily: "monospace", fontSize: 12, marginBottom: 14 }}
+        />
+        {error && <div style={{ color: C.danger, fontSize: 13, marginBottom: 12 }}>⚠️ {error}</div>}
+        <ActionBtn onClick={analyzeBill} disabled={!billText.trim()} loading={step === "analyzing"}>
+          {step === "analyzing" ? "Analyzing bill..." : "Analyze My Vet Bill — Free"}
+        </ActionBtn>
+        <div style={{ textAlign: "center", fontSize: 11, color: C.muted, marginTop: 10 }}>🔒 Your bill is never stored or shared</div>
+      </Card>
+
+      {history.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <SectionLabel>Recent Analyses</SectionLabel>
+          {history.slice(0, 3).map(h => (
+            <Card key={h.id} style={{ marginBottom: 8, cursor: "pointer" }} onClick={() => { setBillText(h.billText); setAnalysis(h.analysis); setStep("results"); }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{h.date} · {h.issues} issue{h.issues !== 1 ? "s" : ""}</div>
+                  <div style={{ fontSize: 12, color: C.text, marginTop: 2, fontFamily: "monospace" }}>{h.preview}...</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
+                  <div style={{ fontSize: 11, color: C.muted }}>Savings</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.success }}>{h.savings}</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Results Screen ────────────────────────────────────────────────
+  if (step === "results" && analysis) {
+    const resolved = Object.values(tracker).filter(s => s === "resolved").length;
+    const total = analysis.flaggedCharges?.length || 0;
+    return (
+      <div style={{ animation: "fadeUp 0.3s ease" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <button className="back-btn" onClick={reset} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, fontFamily: "'Outfit',sans-serif", padding: 0 }}>← New Bill</button>
+        </div>
+
+        {/* Summary */}
+        <Card style={{ marginBottom: 14, borderColor: C.success }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>Analysis Complete</div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, maxWidth: 280 }}>{analysis.summary}</div>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontSize: 11, color: C.muted }}>Save up to</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: C.success }}>{analysis.totalSavingsPotential}</div>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginTop: 14 }}>
+            {[["Billed", analysis.totalBilled, C.text], [`${total} Issues`, "found", C.danger], [analysis.negotiationStrength, "strength", C.warn]].map(([v,l,col]) => (
+              <div key={l} style={{ background: C.bg, borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: col, textTransform: "capitalize" }}>{v}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>{l}</div>
+              </div>
+            ))}
+          </div>
+          {total > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.muted, marginBottom: 4 }}>
+                <span>Dispute progress</span><span style={{ color: C.accent, fontWeight: 600 }}>{resolved}/{total} resolved</span>
+              </div>
+              <div style={{ background: C.border, borderRadius: 4, height: 6 }}>
+                <div style={{ height: "100%", background: C.success, borderRadius: 4, width: `${total ? (resolved/total)*100 : 0}%`, transition: "width 0.4s" }} />
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Flagged charges */}
+        {analysis.flaggedCharges?.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <SectionLabel>Flagged Charges</SectionLabel>
+            {analysis.flaggedCharges.map((charge, i) => {
+              const status = tracker[i] || "pending";
+              return (
+                <Card key={i} style={{ marginBottom: 10, borderColor: SEV[charge.severity] || C.danger }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: SEV[charge.severity] || C.danger, border: `1px solid ${SEV[charge.severity] || C.danger}`, borderRadius: 10, padding: "1px 6px", fontFamily: "'JetBrains Mono',monospace" }}>
+                          {(charge.severity || "HIGH").toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{charge.description}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.danger, marginBottom: 6 }}>⚠️ {charge.issue}</div>
+                      <div style={{ fontSize: 11, color: C.muted, background: C.bg, borderRadius: 6, padding: "4px 8px", display: "inline-block" }}>→ {charge.action}</div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 11, color: C.muted }}>Charged</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{charge.amount}</div>
+                      {charge.savingsPotential && <>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Save</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: C.success }}>{charge.savingsPotential}</div>
+                      </>}
+                    </div>
+                  </div>
+                  <select value={status} onChange={e => setTracker(p => ({ ...p, [i]: e.target.value }))}
+                    style={{ ...inp, fontSize: 12, padding: "6px 10px" }}>
+                    <option value="pending">🔴 Pending</option>
+                    <option value="in_progress">🟡 In Progress</option>
+                    <option value="resolved">🟢 Resolved</option>
+                    <option value="ignored">⚫ Ignored</option>
+                  </select>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Tips */}
+        {analysis.topTips?.length > 0 && (
+          <Card style={{ marginBottom: 14 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: C.text, marginBottom: 12 }}>💡 Negotiation Tips</div>
+            {analysis.topTips.map((tip, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 22, height: 22, background: C.accent, borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i+1}</div>
+                <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginTop: 2 }}>{tip}</div>
+              </div>
+            ))}
+          </Card>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <button onClick={generateLetter}
+            style={{ padding: "13px 0", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 13, fontWeight: 700, color: isPro ? C.accent : C.muted, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            {isPro ? "✍️ Dispute Letter" : "🔒 Dispute Letter"}
+          </button>
+          <button onClick={generateScript}
+            style={{ padding: "13px 0", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 13, fontWeight: 700, color: isPro ? C.success : C.muted, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            {isPro ? "📞 Phone Script" : "🔒 Phone Script"}
+          </button>
+        </div>
+        {!isPro && (
+          <Card style={{ background: C.proDim, borderColor: C.pro, textAlign: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, color: C.pro, fontWeight: 600, marginBottom: 6 }}>👑 Pro unlocks dispute letters + phone scripts</div>
+            <button className="pro-btn" onClick={onUpgrade}
+              style={{ background: C.pro, border: "none", borderRadius: 8, padding: "8px 20px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+              Upgrade to Pro
+            </button>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // ── Letter Screen ─────────────────────────────────────────────────
+  if (step === "letter") return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <button className="back-btn" onClick={() => setStep("results")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, fontFamily: "'Outfit',sans-serif", marginBottom: 16, padding: 0 }}>← Back to Analysis</button>
+      <Card style={{ borderColor: C.success, marginBottom: 14 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>📄 Dispute Letter Ready</div>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>Fill in the bracketed placeholders, then send via certified mail.</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => navigator.clipboard.writeText(letter)}
+            style={{ flex: 1, padding: "9px 0", border: `1px solid ${C.border}`, borderRadius: 8, background: "transparent", fontSize: 12, fontWeight: 600, color: C.accent, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            📋 Copy
+          </button>
+          <button onClick={() => { const b = new Blob([letter],{type:"text/plain"}); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href=u; a.download="vet-dispute-letter.txt"; a.click(); }}
+            style={{ flex: 1, padding: "9px 0", border: "none", borderRadius: 8, background: C.accent, fontSize: 12, fontWeight: 600, color: "#fff", cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            ⬇️ Download
+          </button>
+        </div>
+      </Card>
+      <Card>
+        <pre style={{ fontSize: 13, lineHeight: 1.8, color: C.text, whiteSpace: "pre-wrap", fontFamily: "Georgia,serif", margin: 0, maxHeight: 500, overflowY: "auto" }}>{letter}</pre>
+      </Card>
+    </div>
+  );
+
+  // ── Phone Script Screen ───────────────────────────────────────────
+  if (step === "phone") return (
+    <div style={{ animation: "fadeUp 0.3s ease" }}>
+      <button className="back-btn" onClick={() => setStep("results")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, fontFamily: "'Outfit',sans-serif", marginBottom: 16, padding: 0 }}>← Back to Analysis</button>
+      <Card style={{ borderColor: C.warn, marginBottom: 14 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>📞 Phone Script</div>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>Read this word-for-word when calling the clinic. Document the name of every person you speak with.</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => navigator.clipboard.writeText(script)}
+            style={{ flex: 1, padding: "9px 0", border: `1px solid ${C.border}`, borderRadius: 8, background: "transparent", fontSize: 12, fontWeight: 600, color: C.accent, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            📋 Copy
+          </button>
+          <button onClick={() => { const b = new Blob([script],{type:"text/plain"}); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href=u; a.download="vet-phone-script.txt"; a.click(); }}
+            style={{ flex: 1, padding: "9px 0", border: "none", borderRadius: 8, background: C.accent, fontSize: 12, fontWeight: 600, color: "#fff", cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+            ⬇️ Download
+          </button>
+        </div>
+      </Card>
+      <Card>
+        <pre style={{ fontSize: 13, lineHeight: 1.8, color: C.text, whiteSpace: "pre-wrap", fontFamily: "Georgia,serif", margin: 0, maxHeight: 500, overflowY: "auto" }}>{script}</pre>
+      </Card>
+    </div>
+  );
+
+  return null;
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────
 const TABS = [
   { id: "dogs",      label: "My Dogs",    icon: "🐕" },
@@ -1887,6 +2254,7 @@ const TABS = [
   { id: "chat",      label: "Vet Chat",   icon: "💬" },
   { id: "compare",   label: "Compare",    icon: "⚖️" },
   { id: "tools",     label: "Tools",      icon: "🔧" },
+  { id: "vetbill",   label: "Vet Bill",   icon: "💳" },
   { id: "emergency", label: "Emergency",  icon: "🚨" },
   { id: "pro",       label: "Pro",        icon: "👑" },
 ];
@@ -1986,6 +2354,7 @@ export default function WoofWell() {
         {tab === "chat"      && <VetChat isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
         {tab === "compare"   && <DogCompare isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
         {tab === "tools"     && <Tools />}
+        {tab === "vetbill"   && <VetBillAnalyzer isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} dogs={dogs} />}
         {tab === "emergency" && <EmergencyGuide />}
         {tab === "pro"       && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
       </div>
