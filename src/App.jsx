@@ -782,6 +782,14 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
             <div style={{ fontSize: 11, color: C.accent, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em", marginBottom: 6 }}>FUN FACT</div>
             <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>🐾 {result.funFact}</div>
           </Card>
+          <Card style={{ marginTop: 12 }}>
+            <SectionLabel>Shop for {result.breed}</SectionLabel>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(result.breed + " dog food")}&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>🥩 Food</a>
+              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(result.breed + " dog toys accessories")}&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>🎾 Toys & Gear</a>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic" }}>As an Amazon Associate, WoofWell earns from qualifying purchases.</div>
+          </Card>
         </div>
       )}
 
@@ -1302,6 +1310,15 @@ function HealthProfile({ selectedDog = null, onClearDog = null }) {
             <button onClick={() => { navigator.clipboard.writeText(`WoofWell Health Profile — ${age} ${breed}\n\n${report}`); }} style={{ flex: 1, padding: "11px 0", border: `1px solid ${C.border}`, borderRadius: 10, background: "transparent", color: C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
               📋 Copy
             </button>
+          </div>
+          <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+            <SectionLabel>Shop for {breed}</SectionLabel>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(breed + " dog food")}&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>🥩 Food</a>
+              <a href={`https://www.amazon.com/s?k=${encodeURIComponent(breed + " dog grooming supplies")}&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>✂️ Grooming</a>
+              {age === "senior" && <a href={`https://www.amazon.com/s?k=senior+dog+joint+supplement&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>💊 Supplements</a>}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic" }}>As an Amazon Associate, WoofWell earns from qualifying purchases.</div>
           </div>
         </div>
       )}
@@ -1965,10 +1982,11 @@ function FeedingCalculator({ dogs = [] }) {
           {result.tips?.map((tip, i) => <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.text, marginBottom: 6 }}><span style={{ color: C.accent, flexShrink: 0 }}>•</span>{tip}</div>)}
           <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
             <SectionLabel>Shop food for {breed}</SectionLabel>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <a href={`https://www.chewy.com/s?query=${encodeURIComponent(breed + " dog food")}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>🛒 Chewy</a>
               <a href={`https://www.amazon.com/s?k=${encodeURIComponent(breed + " dog food")}&tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "9px 0", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", textAlign: "center", textDecoration: "none" }}>📦 Amazon</a>
             </div>
+            <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic" }}>As an Amazon Associate, WoofWell earns from qualifying purchases.</div>
           </div>
         </div>
       )}
