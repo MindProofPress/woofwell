@@ -817,7 +817,7 @@ If it's a mix, set mix to true and fill secondaryBreed. Confidence is 0-100.`,
 }
 
 // ─── SYMPTOM CHECKER ──────────────────────────────────────────────
-function SymptomChecker({ isPro, onUpgrade, userId }) {
+function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
   const SYMPTOMS = [
     "Vomiting", "Diarrhea", "Lethargy", "Not eating", "Excessive thirst",
     "Coughing", "Sneezing", "Limping", "Hair loss", "Itching/Scratching",
@@ -825,13 +825,27 @@ function SymptomChecker({ isPro, onUpgrade, userId }) {
     "Seizures", "Excessive licking", "Weight loss", "Fever"
   ];
 
+  const firstDog = dogs[0] || null;
+  const [selectedDogId, setSelectedDogId] = useState(firstDog?.id || "custom");
   const [selected, setSelected] = useState([]);
-  const [breedName, setBreedName] = useState("");
-  const [dogAge, setDogAge] = useState("adult");
+  const [breedName, setBreedName] = useState(firstDog?.breed || "");
+  const [dogAge, setDogAge] = useState(firstDog?.age || "adult");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { scansUsed, canScan, incrementScan, maxScans } = useScanLimit(userId, isPro);
+
+  const handleDogSelect = (id) => {
+    setSelectedDogId(id);
+    setResult(null);
+    if (id === "custom") {
+      setBreedName("");
+      setDogAge("adult");
+    } else {
+      const dog = dogs.find(d => d.id === id);
+      if (dog) { setBreedName(dog.breed); setDogAge(dog.age); }
+    }
+  };
 
   const toggle = (s) => setSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
@@ -879,20 +893,47 @@ function SymptomChecker({ isPro, onUpgrade, userId }) {
       )}
 
       <Card style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-          <div style={{ flex: 1 }}>
-            <SectionLabel>Breed (optional)</SectionLabel>
-            <input value={breedName} onChange={e => setBreedName(e.target.value)} placeholder="e.g. Labrador..."
-              style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif" }} />
-          </div>
-          <div>
-            <SectionLabel>Age Stage</SectionLabel>
-            <select value={dogAge} onChange={e => setDogAge(e.target.value)}
-              style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
-              {["puppy", "adult", "senior"].map(a => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
+        {dogs.length > 0 ? (
+          <div style={{ marginBottom: 14 }}>
+            <SectionLabel>Checking for</SectionLabel>
+            <select value={selectedDogId} onChange={e => handleDogSelect(e.target.value)}
+              style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif", cursor: "pointer", marginBottom: selectedDogId === "custom" ? 10 : 0 }}>
+              {dogs.map(d => <option key={d.id} value={d.id}>{d.name} — {d.breed} ({d.age})</option>)}
+              <option value="custom">Different dog / enter manually</option>
             </select>
+            {selectedDogId === "custom" && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <SectionLabel>Breed (optional)</SectionLabel>
+                  <input value={breedName} onChange={e => setBreedName(e.target.value)} placeholder="e.g. Labrador..."
+                    style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif" }} />
+                </div>
+                <div>
+                  <SectionLabel>Age Stage</SectionLabel>
+                  <select value={dogAge} onChange={e => setDogAge(e.target.value)}
+                    style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+                    {["puppy", "adult", "senior"].map(a => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <SectionLabel>Breed (optional)</SectionLabel>
+              <input value={breedName} onChange={e => setBreedName(e.target.value)} placeholder="e.g. Labrador..."
+                style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif" }} />
+            </div>
+            <div>
+              <SectionLabel>Age Stage</SectionLabel>
+              <select value={dogAge} onChange={e => setDogAge(e.target.value)}
+                style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+                {["puppy", "adult", "senior"].map(a => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
 
         <SectionLabel>Select Symptoms ({selected.length} selected)</SectionLabel>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
@@ -1825,16 +1866,30 @@ function DogAgeCalculator() {
   );
 }
 
-function FeedingCalculator() {
-  const [breed, setBreed] = useState("");
+function FeedingCalculator({ dogs = [] }) {
+  const firstDog = dogs[0] || null;
+  const [selectedDogId, setSelectedDogId] = useState(firstDog?.id || "custom");
+  const [breed, setBreed] = useState(firstDog?.breed || "");
   const [weight, setWeight] = useState("");
-  const [age, setAge] = useState("adult");
+  const [age, setAge] = useState(firstDog?.age || "adult");
   const [activity, setActivity] = useState("moderate");
   const [foodType, setFoodType] = useState("dry");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const sel = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif" };
+
+  const handleDogSelect = (id) => {
+    setSelectedDogId(id);
+    setResult(null);
+    if (id === "custom") {
+      setBreed("");
+      setAge("adult");
+    } else {
+      const dog = dogs.find(d => d.id === id);
+      if (dog) { setBreed(dog.breed); setAge(dog.age); }
+    }
+  };
 
   const calculate = async () => {
     if (!breed || !weight) return;
@@ -1855,13 +1910,24 @@ function FeedingCalculator() {
         <span style={{ fontSize: 20 }}>🍖</span>
         <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: C.text }}>Feeding Calculator</span>
       </div>
+      {dogs.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <SectionLabel>Calculate for</SectionLabel>
+          <select value={selectedDogId} onChange={e => handleDogSelect(e.target.value)} style={sel}>
+            {dogs.map(d => <option key={d.id} value={d.id}>{d.name} — {d.breed} ({d.age})</option>)}
+            <option value="custom">Different dog / enter manually</option>
+          </select>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-        <div style={{ flex: 1 }}><SectionLabel>Breed</SectionLabel><input value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Labrador" style={sel} /></div>
+        {(dogs.length === 0 || selectedDogId === "custom") && (
+          <div style={{ flex: 1 }}><SectionLabel>Breed</SectionLabel><input value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Labrador" style={sel} /></div>
+        )}
         <div style={{ flex: 1 }}><SectionLabel>Weight (lbs)</SectionLabel><input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 65" style={sel} /></div>
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
         <div style={{ flex: 1 }}><SectionLabel>Life Stage</SectionLabel>
-          <select value={age} onChange={e => setAge(e.target.value)} style={sel}>
+          <select value={age} onChange={e => setAge(e.target.value)} style={{ ...sel, opacity: selectedDogId !== "custom" && dogs.length > 0 ? 0.6 : 1 }}>
             <option value="puppy">Puppy</option><option value="adult">Adult</option><option value="senior">Senior</option>
           </select>
         </div>
@@ -1910,12 +1976,12 @@ function FeedingCalculator() {
   );
 }
 
-function Tools() {
+function Tools({ dogs = [] }) {
   return (
     <div style={{ animation: "fadeUp 0.3s ease" }}>
       <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 20px" }}>Tools</h2>
       <DogAgeCalculator />
-      <FeedingCalculator />
+      <FeedingCalculator dogs={dogs} />
     </div>
   );
 }
@@ -2197,10 +2263,10 @@ export default function WoofWell() {
         {tab === "journal"   && <SymptomJournal userId={user.id} dogs={dogs} />}
         {tab === "health"    && <HealthProfile selectedDog={selectedDog} onClearDog={() => setSelectedDog(null)} />}
         {tab === "photo"     && <BreedIdentifier isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
-        {tab === "symptoms"  && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} />}
+        {tab === "symptoms"  && <SymptomChecker isPro={isPro} onUpgrade={() => setTab("pro")} userId={user.id} dogs={dogs} />}
         {tab === "chat"      && <VetChat isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
         {tab === "compare"   && <DogCompare isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
-        {tab === "tools"     && <Tools />}
+        {tab === "tools"     && <Tools dogs={dogs} />}
         {tab === "emergency" && <EmergencyGuide />}
         {tab === "pro"       && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
       </div>
