@@ -163,8 +163,8 @@ function SectionLabel({ children }) {
 }
 
 // ─── AUTH SCREEN ─────────────────────────────────────────────────
-function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login");
+function AuthScreen({ onAuth, initialMode = "login", onBack = null }) {
+  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -191,7 +191,13 @@ function AuthScreen({ onAuth }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <style>{GLOBAL_CSS}</style>
+      {onBack && (
+        <button onClick={onBack} className="back-btn" style={{ position: "fixed", top: 16, left: 16, background: "none", border: "none", color: C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          ← Back to WoofWell
+        </button>
+      )}
       <div style={{ width: "100%", maxWidth: 400, animation: "fadeUp 0.3s ease" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <PawIcon size={40} />
@@ -231,7 +237,216 @@ function AuthScreen({ onAuth }) {
             {mode === "login" ? "Log In" : "Create Account"}
           </ActionBtn>
         </Card>
+
+        <p style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 20 }}>
+          <a href="/privacy.html" style={{ color: C.muted }}>Privacy Policy</a>
+          {" · "}
+          <a href="/terms.html" style={{ color: C.muted }}>Terms of Service</a>
+        </p>
       </div>
+    </div>
+  );
+}
+
+// ─── LANDING PAGE ────────────────────────────────────────────────
+function LandingPage({ onAuth }) {
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState("signup");
+
+  if (showAuth) return <AuthScreen onAuth={onAuth} initialMode={authMode} onBack={() => setShowAuth(false)} />;
+
+  const features = [
+    { icon: "📸", title: "AI Breed Identifier", desc: "Upload a photo of any dog and get instant breed identification with detailed information about temperament, care needs, and health considerations." },
+    { icon: "🩺", title: "Symptom Checker", desc: "Describe your dog's symptoms and receive an AI-powered triage assessment to help you decide whether to visit the vet urgently or monitor at home." },
+    { icon: "💬", title: "24/7 AI Vet Chat", desc: "Get instant answers to your dog health questions any time of day. Our AI is powered by up-to-date veterinary knowledge and tailored to your specific dog." },
+    { icon: "📋", title: "Health Profiles", desc: "Generate comprehensive health profiles for any breed covering common conditions, lifespan, exercise needs, diet recommendations, and grooming tips." },
+    { icon: "💉", title: "Vaccination Records", desc: "Keep all your dog's vaccination records organized in one place. Set reminders so you never miss an important booster shot." },
+    { icon: "📊", title: "Weight Tracker", desc: "Track your dog's weight over time with visual trend charts. Maintaining a healthy weight is one of the most important factors in a dog's longevity." },
+    { icon: "📝", title: "Health Journal", desc: "Log daily health observations, symptoms, and notes. Build a detailed health history that's invaluable when speaking with your veterinarian." },
+    { icon: "🔔", title: "Vet Reminders", desc: "Never miss a vet appointment again. Set and manage reminders for checkups, dental cleanings, flea treatments, and other recurring health tasks." },
+    { icon: "⚖️", title: "Breed Compare", desc: "Compare two dog breeds side by side across key dimensions including health risks, exercise needs, grooming, and suitability for different lifestyles." },
+    { icon: "🔧", title: "Dog Tools", desc: "Handy calculators including a dog age converter (dog years to human years) and a feeding calculator to find the right portion size for your dog." },
+    { icon: "🚨", title: "Emergency Guide", desc: "Step-by-step first aid guides for common dog emergencies including choking, poisoning, heatstroke, and injuries. Potentially life-saving information." },
+    { icon: "🐕", title: "Multi-Dog Support", desc: "Manage health profiles for your entire pack. Add unlimited dogs and keep each pet's health records, reminders, and journal entries separate and organized." },
+  ];
+
+  const articles = [
+    {
+      title: "Recognizing Signs Your Dog Needs Veterinary Care",
+      body: [
+        "Knowing when to call the vet is one of the most important skills a dog owner can develop. While some symptoms can be safely monitored at home, others require immediate professional attention.",
+        "**Urgent signs that warrant an emergency vet visit:** Difficulty breathing, collapse or inability to stand, seizures lasting more than a few minutes, suspected poisoning, severe trauma, uncontrolled bleeding, inability to urinate (especially in male dogs), a bloated or distended abdomen, loss of consciousness, or signs of extreme pain.",
+        "**Signs to call your vet within 24 hours:** Vomiting or diarrhea lasting more than 24 hours, noticeable limping that does not improve, loss of appetite for more than a day, unusual lethargy or tiredness, eye or ear discharge, excessive scratching or sudden skin changes, and unexplained weight loss or gain.",
+        "**Monitoring at home may be appropriate for:** Minor cuts or scrapes, mild sneezing without other symptoms, occasional loose stool without blood, and very mild limping after exercise that improves with rest within a few hours.",
+        "The WoofWell Symptom Checker can help you triage your dog's symptoms and decide on the best course of action. However, it should always complement — never replace — professional veterinary advice.",
+      ]
+    },
+    {
+      title: "Essential Dog Vaccinations: A Complete Owner's Guide",
+      body: [
+        "Vaccinations are one of the most effective tools we have to protect dogs from serious and potentially fatal diseases. Understanding which vaccines your dog needs and when they are due is a cornerstone of responsible dog ownership.",
+        "**Core vaccines (recommended for all dogs):** Rabies is required by law in most regions and protects against the fatal rabies virus. The DHPP combination vaccine protects against Distemper, Hepatitis, Parvovirus, and Parainfluenza — four serious diseases that are common in unvaccinated dogs.",
+        "**Non-core vaccines (based on lifestyle and risk):** Bordetella (Kennel Cough) is recommended for dogs that visit grooming facilities, dog parks, or boarding kennels. Leptospirosis is recommended for dogs exposed to wildlife or standing water. Lyme disease vaccine is recommended in tick-endemic regions. Canine Influenza is recommended for dogs with frequent contact with other dogs.",
+        "**Puppy vaccination schedule:** Puppies typically receive their first DHPP at 6–8 weeks, a booster at 10–12 weeks, then DHPP and Rabies at 14–16 weeks. Boosters are given at 12–16 months, then every 1–3 years depending on the vaccine type and your veterinarian's recommendation.",
+        "WoofWell's Vaccination Records feature helps you track all of your dog's immunizations and sends reminders when boosters are due, so you never fall behind on your dog's protection.",
+      ]
+    },
+    {
+      title: "Dog Nutrition Basics: Feeding Your Dog for a Long, Healthy Life",
+      body: [
+        "What your dog eats has a profound impact on their health, energy levels, coat condition, and longevity. Understanding the fundamentals of dog nutrition helps you make better decisions at the pet food aisle and beyond.",
+        "**Protein** is the most important macronutrient for dogs. High-quality animal proteins such as chicken, beef, fish, and lamb should appear as the first ingredient in your dog's food. Protein supports muscle maintenance, immune function, and tissue repair throughout your dog's life.",
+        "**Fats** are essential for energy, skin and coat health, brain function, and absorption of fat-soluble vitamins A, D, E, and K. Look for named fat sources like chicken fat or salmon oil rather than generic 'animal fat' on ingredient labels.",
+        "**How much to feed** depends on your dog's age, weight, activity level, and the caloric density of the food. As a general starting point: small dogs under 10 lbs need about ¼ to 1 cup per day; medium dogs (10–30 lbs) need 1 to 2 cups; large dogs (30–60 lbs) need 2 to 3 cups; and giant breeds need 3 or more cups. Always follow the feeding guidelines on your specific food and adjust based on body condition.",
+        "**Foods that are toxic to dogs:** Chocolate, xylitol (artificial sweetener found in sugar-free products), grapes and raisins, onions and garlic, macadamia nuts, alcohol, caffeine, avocado, and raw yeast dough are all dangerous or fatal to dogs and must be kept out of reach at all times.",
+        "Use WoofWell's Feeding Calculator tool to get a personalized feeding recommendation for your dog based on their breed, current weight, and age.",
+      ]
+    },
+  ];
+
+  const breeds = [
+    { name: "Labrador Retriever", lifespan: "10–12 yrs", size: "Large (55–80 lbs)", health: "Hip dysplasia, obesity, ear infections", trait: "Friendly, outgoing, active" },
+    { name: "Golden Retriever", lifespan: "10–12 yrs", size: "Large (55–75 lbs)", health: "Hip dysplasia, cancer, heart disease", trait: "Intelligent, friendly, devoted" },
+    { name: "French Bulldog", lifespan: "10–12 yrs", size: "Small (under 28 lbs)", health: "Brachycephalic syndrome, allergies, spinal disorders", trait: "Adaptable, playful, smart" },
+    { name: "German Shepherd", lifespan: "9–13 yrs", size: "Large (50–90 lbs)", health: "Hip & elbow dysplasia, bloat, degenerative myelopathy", trait: "Confident, courageous, intelligent" },
+    { name: "Beagle", lifespan: "10–15 yrs", size: "Medium (20–30 lbs)", health: "Epilepsy, hypothyroidism, obesity", trait: "Curious, friendly, merry" },
+    { name: "Poodle", lifespan: "10–18 yrs", size: "Toy to Standard (4–70 lbs)", health: "Hip dysplasia, Addison's disease, bloat", trait: "Intelligent, active, elegant" },
+  ];
+
+  const footerLinks = [
+    { label: "About", href: "/about.html" },
+    { label: "Privacy Policy", href: "/privacy.html" },
+    { label: "Terms of Service", href: "/terms.html" },
+    { label: "Contact", href: "mailto:mindproofpress@gmail.com" },
+  ];
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Outfit', sans-serif", color: C.text }}>
+      <style>{GLOBAL_CSS}</style>
+
+      {/* Nav */}
+      <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <PawIcon size={26} />
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: C.text }}>
+            Woof<span style={{ color: C.accent }}>Well</span>
+          </span>
+        </div>
+        <nav style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+          <a href="/about.html" style={{ fontSize: 13, color: C.muted, textDecoration: "none", fontWeight: 500 }}>About</a>
+          <button onClick={() => { setAuthMode("login"); setShowAuth(true); }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 14px", color: C.text, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer", fontWeight: 500 }}>
+            Sign In
+          </button>
+          <button onClick={() => { setAuthMode("signup"); setShowAuth(true); }} style={{ padding: "6px 16px", border: "none", borderRadius: 8, background: C.accent, color: "#fff", fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer", fontWeight: 600 }}>
+            Get Started Free
+          </button>
+        </nav>
+      </header>
+
+      {/* Hero */}
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "72px 24px 60px", textAlign: "center" }}>
+        <div style={{ display: "inline-block", background: C.accentDim, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "4px 16px", fontSize: 12, color: C.accent, fontWeight: 600, letterSpacing: "0.08em", marginBottom: 24 }}>
+          AI-POWERED DOG HEALTH
+        </div>
+        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "clamp(2.2rem, 6vw, 3.4rem)", fontWeight: 700, color: C.text, lineHeight: 1.15, margin: "0 0 20px" }}>
+          The Complete Dog Health Companion
+        </h1>
+        <p style={{ fontSize: 17, color: C.muted, lineHeight: 1.7, maxWidth: 520, margin: "0 auto 36px" }}>
+          WoofWell combines AI technology with comprehensive dog health tools — breed identification, symptom checking, vaccination tracking, emergency guides, and more. Everything you need to keep your dog healthy, all in one place.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={() => { setAuthMode("signup"); setShowAuth(true); }} style={{ padding: "14px 32px", border: "none", borderRadius: 10, background: C.accent, color: "#fff", fontSize: 15, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+            Start for Free
+          </button>
+          <button onClick={() => { setAuthMode("login"); setShowAuth(true); }} style={{ padding: "14px 32px", border: `1px solid ${C.border}`, borderRadius: 10, background: "transparent", color: C.text, fontSize: 15, fontWeight: 500, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+            Sign In
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: C.muted, marginTop: 14 }}>Free to use · No credit card required</p>
+      </section>
+
+      {/* Features Grid */}
+      <section style={{ background: C.card, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "60px 24px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: C.text, textAlign: "center", margin: "0 0 8px" }}>Everything Your Dog Needs</h2>
+          <p style={{ color: C.muted, textAlign: "center", fontSize: 15, marginBottom: 48 }}>12 powerful tools covering every aspect of your dog's health and wellness</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 20 }}>
+            {features.map(f => (
+              <div key={f.title} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 22px" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: "0 0 8px" }}>{f.title}</h3>
+                <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Dog Health Articles */}
+      <section style={{ maxWidth: 800, margin: "0 auto", padding: "64px 24px" }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: C.text, margin: "0 0 8px" }}>Dog Health Guide</h2>
+        <p style={{ color: C.muted, fontSize: 15, marginBottom: 48 }}>Evidence-based information to help you care for your dog</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+          {articles.map(a => (
+            <article key={a.title} style={{ borderTop: `1px solid ${C.border}`, paddingTop: 36 }}>
+              <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.4rem", fontWeight: 700, color: C.text, margin: "0 0 20px" }}>{a.title}</h3>
+              <div style={{ fontSize: 14, color: C.text, lineHeight: 1.85 }}>
+                {a.body.map((para, i) => (
+                  <p key={i} style={{ margin: "0 0 14px" }}>{parseMarkdown(para)}</p>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Breed Profiles */}
+      <section style={{ background: C.card2, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "60px 24px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: C.text, margin: "0 0 8px" }}>Popular Breed Profiles</h2>
+          <p style={{ color: C.muted, fontSize: 15, marginBottom: 40 }}>Key health facts for six of the most popular dog breeds</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+            {breeds.map(b => (
+              <div key={b.name} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 22px" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: "0 0 14px" }}>{b.name}</h3>
+                <div style={{ fontSize: 13, color: C.muted, lineHeight: 2 }}>
+                  <div><strong style={{ color: C.text }}>Lifespan:</strong> {b.lifespan}</div>
+                  <div><strong style={{ color: C.text }}>Size:</strong> {b.size}</div>
+                  <div><strong style={{ color: C.text }}>Temperament:</strong> {b.trait}</div>
+                  <div><strong style={{ color: C.text }}>Health watch:</strong> {b.health}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section style={{ maxWidth: 560, margin: "0 auto", padding: "72px 24px", textAlign: "center" }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: C.text, margin: "0 0 12px" }}>Start Caring Smarter</h2>
+        <p style={{ fontSize: 15, color: C.muted, lineHeight: 1.7, margin: "0 0 32px" }}>
+          Join dog owners using WoofWell to track health records, identify breeds, check symptoms, and get AI-powered veterinary guidance — all for free.
+        </p>
+        <button onClick={() => { setAuthMode("signup"); setShowAuth(true); }} style={{ padding: "15px 40px", border: "none", borderRadius: 10, background: C.accent, color: "#fff", fontSize: 16, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+          Create Your Free Account
+        </button>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ background: C.card, borderTop: `1px solid ${C.border}`, padding: "32px 24px", textAlign: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+          <PawIcon size={18} />
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: 700, color: C.text }}>WoofWell</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", marginBottom: 16 }}>
+          {footerLinks.map(link => (
+            <a key={link.label} href={link.href} style={{ fontSize: 13, color: C.muted, textDecoration: "none", fontWeight: 500 }}>
+              {link.label}
+            </a>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>© 2026 WoofWell by Mind Proof Press. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
@@ -1928,7 +2143,7 @@ export default function WoofWell() {
     </div>
   );
 
-  if (!user) return <AuthScreen onAuth={setUser} />;
+  if (!user) return <LandingPage onAuth={setUser} />;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
