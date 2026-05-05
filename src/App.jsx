@@ -865,18 +865,6 @@ function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
     }
   };
 
-  const handleDogSelect = (id) => {
-    setSelectedDogId(id);
-    setResult(null);
-    if (id === "custom") {
-      setBreedName("");
-      setDogAge("adult");
-    } else {
-      const dog = dogs.find(d => d.id === id);
-      if (dog) { setBreedName(dog.breed); setDogAge(dog.age); }
-    }
-  };
-
   const toggle = (s) => setSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
   const check = async () => {
