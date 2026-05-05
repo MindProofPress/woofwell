@@ -129,9 +129,9 @@ const Spinner = () => (
 );
 
 // ─── Shared Components ────────────────────────────────────────────
-function Card({ children, style = {} }) {
+function Card({ children, style = {}, onClick }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px 22px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", ...style }}>
+    <div onClick={onClick} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px 22px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", ...style }}>
       {children}
     </div>
   );
@@ -469,6 +469,7 @@ function Paywall({ onUnlock, isPro, userId }) {
     setProcessing(true);
     await new Promise(r => setTimeout(r, 2200));
     await supabase.from("profiles").upsert({ id: userId, is_pro: true, pro_since: new Date().toISOString() }, { onConflict: "id" });
+    localStorage.setItem(`pro_${userId}`, "true");
     setProcessing(false);
     setDone(true);
     await new Promise(r => setTimeout(r, 1200));
@@ -842,6 +843,27 @@ function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { scansUsed, canScan, incrementScan, maxScans } = useScanLimit(userId, isPro);
+  const [customSymptom, setCustomSymptom] = useState("");
+
+  const addCustomSymptom = () => {
+    const trimmed = customSymptom.trim();
+    if (trimmed && !selected.includes(trimmed)) {
+      setSelected(prev => [...prev, trimmed]);
+    }
+    setCustomSymptom("");
+  };
+
+  const handleDogSelect = (id) => {
+    setSelectedDogId(id);
+    setResult(null);
+    if (id === "custom") {
+      setBreedName("");
+      setDogAge("adult");
+    } else {
+      const dog = dogs.find(d => d.id === id);
+      if (dog) { setBreedName(dog.breed); setDogAge(dog.age); }
+    }
+  };
 
   const handleDogSelect = (id) => {
     setSelectedDogId(id);
@@ -944,7 +966,7 @@ function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
         )}
 
         <SectionLabel>Select Symptoms ({selected.length} selected)</SectionLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 10 }}>
           {SYMPTOMS.map(s => (
             <button key={s} className={`sym-chip ${selected.includes(s) ? "selected" : ""}`}
               onClick={() => toggle(s)}
@@ -955,6 +977,23 @@ function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
                 fontSize: 12, fontFamily: "'Outfit', sans-serif",
               }}>{s}</button>
           ))}
+          {selected.filter(s => !SYMPTOMS.includes(s)).map(s => (
+            <button key={s} className="sym-chip selected" onClick={() => toggle(s)}
+              style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.accent}`, background: C.accentDim, color: C.accent, fontSize: 12, fontFamily: "'Outfit', sans-serif" }}>
+              {s} ✕
+            </button>
+          ))}
+        </div>
+        <SectionLabel>Or type a symptom</SectionLabel>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={customSymptom} onChange={e => setCustomSymptom(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addCustomSymptom()}
+            placeholder="e.g. Swollen paw, Not drinking..."
+            style={{ flex: 1, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif" }} />
+          <button onClick={addCustomSymptom} disabled={!customSymptom.trim()}
+            style={{ padding: "8px 14px", background: customSymptom.trim() ? C.accent : C.card2, border: "none", borderRadius: 8, color: customSymptom.trim() ? "#fff" : C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: customSymptom.trim() ? "pointer" : "not-allowed" }}>
+            Add
+          </button>
         </div>
       </Card>
 
@@ -1031,18 +1070,40 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
+  const [isMixed, setIsMixed] = useState(false);
+  const [breed2, setBreed2] = useState("");
+  const [breed3, setBreed3] = useState("");
+  const [unknownMix, setUnknownMix] = useState(false);
   const [age, setAge] = useState("adult");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const buildBreedString = () => {
+    if (unknownMix) return "Mixed breed / Mutt";
+    if (isMixed) {
+      const parts = [breed.trim(), breed2.trim(), breed3.trim()].filter(Boolean);
+      if (parts.length === 1) return parts[0];
+      return parts.join(" / ") + " mix";
+    }
+    return breed.trim();
+  };
+
+  const isAddReady = () => {
+    if (!name.trim()) return false;
+    if (unknownMix) return true;
+    if (isMixed) return breed.trim().length > 0;
+    return breed.trim().length > 0;
+  };
+
   const handleAdd = async () => {
-    if (!name.trim() || !breed.trim()) return;
+    if (!isAddReady()) return;
     setSaving(true); setError(null);
-    const { error } = await supabase.from("dogs").insert({ user_id: userId, name: name.trim(), breed: breed.trim(), age });
+    const breedString = buildBreedString();
+    const { error } = await supabase.from("dogs").insert({ user_id: userId, name: name.trim(), breed: breedString, age });
     if (error) {
       setError("Could not save dog. Please try again.");
     } else {
-      setName(""); setBreed(""); setAge("adult"); setShowAdd(false);
+      setName(""); setBreed(""); setBreed2(""); setBreed3(""); setIsMixed(false); setUnknownMix(false); setAge("adult"); setShowAdd(false);
       onDogsChange();
     }
     setSaving(false);
@@ -1050,6 +1111,65 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
 
   const handleDelete = async (dogId) => {
     await supabase.from("dogs").delete().eq("id", dogId);
+    onDogsChange();
+  };
+
+  // Edit state
+  const [editingDogId, setEditingDogId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editBreed, setEditBreed] = useState("");
+  const [editBreed2, setEditBreed2] = useState("");
+  const [editBreed3, setEditBreed3] = useState("");
+  const [editIsMixed, setEditIsMixed] = useState(false);
+  const [editUnknownMix, setEditUnknownMix] = useState(false);
+  const [editAge, setEditAge] = useState("adult");
+  const [editSaving, setEditSaving] = useState(false);
+
+  const parseBreedForEdit = (breedStr) => {
+    if (!breedStr || breedStr === "Mixed breed / Mutt") {
+      return { b1: "", b2: "", b3: "", isMixed: false, isUnknown: breedStr === "Mixed breed / Mutt" };
+    }
+    if (breedStr.endsWith(" mix")) {
+      const parts = breedStr.slice(0, -4).split(" / ");
+      return { b1: parts[0] || "", b2: parts[1] || "", b3: parts[2] || "", isMixed: true, isUnknown: false };
+    }
+    return { b1: breedStr, b2: "", b3: "", isMixed: false, isUnknown: false };
+  };
+
+  const startEdit = (dog) => {
+    const parsed = parseBreedForEdit(dog.breed);
+    setEditingDogId(dog.id);
+    setEditName(dog.name);
+    setEditBreed(parsed.b1);
+    setEditBreed2(parsed.b2);
+    setEditBreed3(parsed.b3);
+    setEditIsMixed(parsed.isMixed);
+    setEditUnknownMix(parsed.isUnknown);
+    setEditAge(dog.age);
+  };
+
+  const buildEditBreedString = () => {
+    if (editUnknownMix) return "Mixed breed / Mutt";
+    if (editIsMixed) {
+      const parts = [editBreed.trim(), editBreed2.trim(), editBreed3.trim()].filter(Boolean);
+      return parts.length > 1 ? parts.join(" / ") + " mix" : parts[0] || "";
+    }
+    return editBreed.trim();
+  };
+
+  const isEditReady = () => {
+    if (!editName.trim()) return false;
+    if (editUnknownMix) return true;
+    return editBreed.trim().length > 0;
+  };
+
+  const handleUpdate = async (dogId) => {
+    if (!isEditReady()) return;
+    setEditSaving(true);
+    const breedString = buildEditBreedString();
+    await supabase.from("dogs").update({ name: editName.trim(), breed: breedString, age: editAge }).eq("id", dogId);
+    setEditingDogId(null);
+    setEditSaving(false);
     onDogsChange();
   };
 
@@ -1088,8 +1208,31 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
           <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Buddy"
             style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }} />
           <SectionLabel>Breed</SectionLabel>
-          <input value={breed} onChange={e => setBreed(e.target.value)} placeholder="e.g. Golden Retriever"
-            style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 }} />
+          {/* Mixed breed toggle */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <button onClick={() => { setIsMixed(false); setUnknownMix(false); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${!isMixed && !unknownMix ? C.accent : C.border}`, background: !isMixed && !unknownMix ? C.accentDim : C.card2, color: !isMixed && !unknownMix ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", fontWeight: !isMixed && !unknownMix ? 600 : 400, cursor: "pointer" }}>Single Breed</button>
+            <button onClick={() => { setIsMixed(true); setUnknownMix(false); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${isMixed && !unknownMix ? C.accent : C.border}`, background: isMixed && !unknownMix ? C.accentDim : C.card2, color: isMixed && !unknownMix ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", fontWeight: isMixed && !unknownMix ? 600 : 400, cursor: "pointer" }}>Mixed Breed</button>
+            <button onClick={() => { setUnknownMix(true); setIsMixed(false); setBreed(""); setBreed2(""); setBreed3(""); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${unknownMix ? C.accent : C.border}`, background: unknownMix ? C.accentDim : C.card2, color: unknownMix ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", fontWeight: unknownMix ? 600 : 400, cursor: "pointer" }}>Mutt / Unknown</button>
+          </div>
+          {!unknownMix && (
+            <>
+              <input value={breed} onChange={e => setBreed(e.target.value)} placeholder={isMixed ? "Primary breed (e.g. Labrador)" : "e.g. Golden Retriever"}
+                style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: isMixed ? 8 : 14, boxSizing: "border-box" }} />
+              {isMixed && (
+                <>
+                  <input value={breed2} onChange={e => setBreed2(e.target.value)} placeholder="Second breed (e.g. Golden Retriever)"
+                    style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 8, boxSizing: "border-box" }} />
+                  <input value={breed3} onChange={e => setBreed3(e.target.value)} placeholder="Third breed (optional)"
+                    style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14, boxSizing: "border-box" }} />
+                </>
+              )}
+            </>
+          )}
+          {unknownMix && (
+            <div style={{ background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.accent, marginBottom: 14 }}>
+              🐾 Will be saved as "Mixed breed / Mutt"
+            </div>
+          )}
           <SectionLabel>Life Stage</SectionLabel>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             {["puppy", "adult", "senior"].map(a => (
@@ -1104,7 +1247,7 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
             ))}
           </div>
           {error && <div style={{ color: C.danger, fontSize: 13, marginBottom: 10 }}>{error}</div>}
-          <ActionBtn onClick={handleAdd} disabled={!name.trim() || !breed.trim()} loading={saving}>Save Dog</ActionBtn>
+          <ActionBtn onClick={handleAdd} disabled={!isAddReady()} loading={saving}>Save Dog</ActionBtn>
         </Card>
       )}
 
@@ -1118,23 +1261,70 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
 
       {dogs.map(dog => (
         <Card key={dog.id} style={{ marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <PawIcon size={22} />
+          {editingDogId === dog.id ? (
+            <>
+              <SectionLabel>Dog's Name</SectionLabel>
+              <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="e.g. Buddy"
+                style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14, boxSizing: "border-box" }} />
+              <SectionLabel>Breed</SectionLabel>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <button onClick={() => { setEditIsMixed(false); setEditUnknownMix(false); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${!editIsMixed && !editUnknownMix ? C.accent : C.border}`, background: !editIsMixed && !editUnknownMix ? C.accentDim : C.card2, color: !editIsMixed && !editUnknownMix ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", fontWeight: !editIsMixed && !editUnknownMix ? 600 : 400, cursor: "pointer" }}>Single Breed</button>
+                <button onClick={() => { setEditIsMixed(true); setEditUnknownMix(false); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${editIsMixed && !editUnknownMix ? C.accent : C.border}`, background: editIsMixed && !editUnknownMix ? C.accentDim : C.card2, color: editIsMixed && !editUnknownMix ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", fontWeight: editIsMixed && !editUnknownMix ? 600 : 400, cursor: "pointer" }}>Mixed Breed</button>
+                <button onClick={() => { setEditUnknownMix(true); setEditIsMixed(false); setEditBreed(""); setEditBreed2(""); setEditBreed3(""); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${editUnknownMix ? C.accent : C.border}`, background: editUnknownMix ? C.accentDim : C.card2, color: editUnknownMix ? C.accent : C.muted, fontSize: 12, fontFamily: "'Outfit', sans-serif", fontWeight: editUnknownMix ? 600 : 400, cursor: "pointer" }}>Mutt / Unknown</button>
               </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 16, color: C.text }}>{dog.name}</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{dog.breed} · <span style={{ textTransform: "capitalize" }}>{dog.age}</span></div>
+              {!editUnknownMix && (
+                <>
+                  <input value={editBreed} onChange={e => setEditBreed(e.target.value)} placeholder={editIsMixed ? "Primary breed (e.g. Labrador)" : "e.g. Golden Retriever"}
+                    style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: editIsMixed ? 8 : 14, boxSizing: "border-box" }} />
+                  {editIsMixed && (
+                    <>
+                      <input value={editBreed2} onChange={e => setEditBreed2(e.target.value)} placeholder="Second breed (e.g. Golden Retriever)"
+                        style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 8, boxSizing: "border-box" }} />
+                      <input value={editBreed3} onChange={e => setEditBreed3(e.target.value)} placeholder="Third breed (optional)"
+                        style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14, boxSizing: "border-box" }} />
+                    </>
+                  )}
+                </>
+              )}
+              {editUnknownMix && (
+                <div style={{ background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.accent, marginBottom: 14 }}>
+                  🐾 Will be saved as "Mixed breed / Mutt"
+                </div>
+              )}
+              <SectionLabel>Life Stage</SectionLabel>
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {["puppy", "adult", "senior"].map(a => (
+                  <button key={a} onClick={() => setEditAge(a)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${editAge === a ? C.accent : C.border}`, background: editAge === a ? C.accentDim : C.card2, color: editAge === a ? C.accent : C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", fontWeight: editAge === a ? 600 : 400, cursor: "pointer", textTransform: "capitalize" }}>{a}</button>
+                ))}
               </div>
-            </div>
-            <button className="dog-delete-btn" onClick={() => handleDelete(dog.id)}
-              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>✕</button>
-          </div>
-          <button className="action-btn" onClick={() => onViewProfile(dog)}
-            style={{ width: "100%", marginTop: 12, padding: "10px 0", border: "none", borderRadius: 8, background: C.accent, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
-            View Health Profile →
-          </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setEditingDogId(null)} style={{ flex: 1, padding: "10px 0", border: `1px solid ${C.border}`, borderRadius: 10, background: "transparent", color: C.muted, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>Cancel</button>
+                <ActionBtn onClick={() => handleUpdate(dog.id)} disabled={!isEditReady()} loading={editSaving} style={{ flex: 2 }}>Save Changes</ActionBtn>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <PawIcon size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 16, color: C.text }}>{dog.name}</div>
+                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{dog.breed} · <span style={{ textTransform: "capitalize" }}>{dog.age}</span></div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => startEdit(dog)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", color: C.muted, fontSize: 12, cursor: "pointer" }}>✏️</button>
+                  <button className="dog-delete-btn" onClick={() => handleDelete(dog.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>✕</button>
+                </div>
+              </div>
+              <button className="action-btn" onClick={() => onViewProfile(dog)}
+                style={{ width: "100%", marginTop: 12, padding: "10px 0", border: "none", borderRadius: 8, background: C.accent, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+                View Health Profile →
+              </button>
+            </>
+          )}
         </Card>
       ))}
     </div>

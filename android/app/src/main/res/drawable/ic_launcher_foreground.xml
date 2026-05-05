@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <!-- Orange background -->
+  <path
+      android:fillColor="#E8622A"
+      android:pathData="M0,0 L108,0 L108,108 L0,108 Z"/>
+  <!-- Main paw pad (ellipse cx=54 cy=68 rx=23 ry=20) -->
+  <path
+      android:fillColor="#FFF8F5"
+      android:pathData="M31,68 C31,56.95 41.3,48 54,48 C66.7,48 77,56.95 77,68 C77,79.05 66.7,88 54,88 C41.3,88 31,79.05 31,68 Z"/>
+  <!-- Top left toe (cx=30 cy=46 rx=8 ry=10) -->
+  <path
+      android:fillColor="#FFF8F5"
+      android:pathData="M22,46 C22,40.48 25.58,36 30,36 C34.42,36 38,40.48 38,46 C38,51.52 34.42,56 30,56 C25.58,56 22,51.52 22,46 Z"/>
+  <!-- Top center-left toe (cx=43 cy=40 rx=8 ry=10) -->
+  <path
+      android:fillColor="#FFF8F5"
+      android:pathData="M35,40 C35,34.48 38.58,30 43,30 C47.42,30 51,34.48 51,40 C51,45.52 47.42,50 43,50 C38.58,50 35,45.52 35,40 Z"/>
+  <!-- Top center-right toe (cx=63 cy=40 rx=8 ry=10) -->
+  <path
+      android:fillColor="#FFF8F5"
+      android:pathData="M55,40 C55,34.48 58.58,30 63,30 C67.42,30 71,34.48 71,40 C71,45.52 67.42,50 63,50 C58.58,50 55,45.52 55,40 Z"/>
+  <!-- Top right toe (cx=76 cy=46 rx=8 ry=10) -->
+  <path
+      android:fillColor="#FFF8F5"
+      android:pathData="M68,46 C68,40.48 71.58,36 76,36 C80.42,36 84,40.48 84,46 C84,51.52 80.42,56 76,56 C71.58,56 68,51.52 68,46 Z"/>
+</vector>
