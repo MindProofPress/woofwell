@@ -45,6 +45,12 @@ const GLOBAL_CSS = `
   .sym-chip.selected { border-color: ${C.accent} !important; background: ${C.accentDim} !important; color: ${C.accent} !important; }
   .dog-delete-btn:hover { border-color: ${C.danger} !important; color: ${C.danger} !important; }
   input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.3); }
+  @media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    body { background: white !important; }
+    nav, header { display: none !important; }
+  }
 `;
 
 // ─── Scan Limit Hook ──────────────────────────────────────────────
@@ -1054,7 +1060,7 @@ function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
 }
 
 // ─── SAVED DOGS ───────────────────────────────────────────────────
-function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
+function SavedDogs({ userId, dogs, onDogsChange, onViewProfile, onViewFaceSheet }) {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
@@ -1307,10 +1313,16 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile }) {
                   <button className="dog-delete-btn" onClick={() => handleDelete(dog.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", color: C.muted, fontSize: 12, cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>✕</button>
                 </div>
               </div>
-              <button className="action-btn" onClick={() => onViewProfile(dog)}
-                style={{ width: "100%", marginTop: 12, padding: "10px 0", border: "none", borderRadius: 8, background: C.accent, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
-                View Health Profile →
-              </button>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button className="action-btn" onClick={() => onViewProfile(dog)}
+                  style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 8, background: C.accent, color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+                  Health Profile →
+                </button>
+                <button onClick={() => onViewFaceSheet(dog)}
+                  style={{ flex: 1, padding: "10px 0", border: `1.5px solid ${C.accent}`, borderRadius: 8, background: "transparent", color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+                  📋 Face Sheet
+                </button>
+              </div>
             </>
           )}
         </Card>
@@ -2351,6 +2363,166 @@ function DogCompare({ isPro, onUpgrade, dogs }) {
   );
 }
 
+// ─── PET FACE SHEET ───────────────────────────────────────────────
+const FACE_SHEET_DEFAULTS = {
+  weight: "", color: "", microchip: "", dob: "",
+  foodBrand: "", foodAmount: "", feedingSchedule: "", treatsAllowed: "",
+  foodAllergies: "", envAllergies: "", medAllergies: "",
+  medications: "", conditions: "",
+  favThings: "", dislikes: "", triggers: "", rewards: "", behaviorNotes: "",
+  vetName: "", vetClinic: "", vetPhone: "", vetAddress: "",
+  emergencyName: "", emergencyPhone: "", emergencyRelation: "",
+  specialNotes: "",
+};
+
+function loadFaceSheet(dogId) {
+  try { return { ...FACE_SHEET_DEFAULTS, ...JSON.parse(localStorage.getItem(`fs_${dogId}`) || "{}") }; }
+  catch { return { ...FACE_SHEET_DEFAULTS }; }
+}
+function saveFaceSheet(dogId, data) {
+  localStorage.setItem(`fs_${dogId}`, JSON.stringify(data));
+}
+
+function PetFaceSheet({ dog, onBack }) {
+  const [data, setData] = useState(() => loadFaceSheet(dog.id));
+  const [saved, setSaved] = useState(false);
+  const [printing, setPrinting] = useState(false);
+
+  const set = (field, val) => setData(d => ({ ...d, [field]: val }));
+
+  const handleSave = () => {
+    saveFaceSheet(dog.id, data);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handlePrint = () => {
+    saveFaceSheet(dog.id, data);
+    setPrinting(true);
+    setTimeout(() => { window.print(); setPrinting(false); }, 100);
+  };
+
+  const Field = ({ label, field, placeholder = "", type = "text", wide = false }) => (
+    <div style={{ marginBottom: 10, gridColumn: wide ? "1 / -1" : undefined }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 3, textTransform: "uppercase", letterSpacing: ".4px" }}>{label}</div>
+      {type === "textarea"
+        ? <textarea value={data[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
+            style={{ width: "100%", minHeight: 70, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "'Outfit', sans-serif", color: C.text, background: "#FAFAFA", resize: "vertical", lineHeight: 1.5 }} />
+        : <input type={type} value={data[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
+            style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "'Outfit', sans-serif", color: C.text, background: "#FAFAFA" }} />
+      }
+    </div>
+  );
+
+  const Section = ({ icon, title, children }) => (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 6, borderBottom: `1.5px solid ${C.border}` }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 17, fontWeight: 700, color: C.text }}>{title}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "20px 16px 60px" }}>
+      {/* Header */}
+      <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <button onClick={onBack} className="back-btn"
+          style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 13, color: C.muted, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>
+          ← Back
+        </button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, color: C.text }}>{dog.name}'s Face Sheet</div>
+          <div style={{ fontSize: 12, color: C.muted }}>{dog.breed} · {dog.age}</div>
+        </div>
+        <button onClick={handleSave}
+          style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.accent}`, background: saved ? C.success : "transparent", color: saved ? "white" : C.accent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif", transition: "all .2s" }}>
+          {saved ? "✓ Saved" : "Save"}
+        </button>
+        <button onClick={handlePrint}
+          style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>
+          🖨️ Print / PDF
+        </button>
+      </div>
+
+      {/* Print header — only visible when printing */}
+      <div className="print-only" style={{ display: "none", marginBottom: 24, borderBottom: `3px solid ${C.accent}`, paddingBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: C.text }}>{dog.name}</div>
+            <div style={{ fontSize: 14, color: C.muted }}>{dog.breed} · {dog.age}{data.dob ? ` · Born ${data.dob}` : ""}{data.weight ? ` · ${data.weight} lbs` : ""}</div>
+          </div>
+          <div style={{ fontSize: 13, color: C.muted, textAlign: "right" }}>
+            <div style={{ fontWeight: 700, fontSize: 18, color: C.accent }}>🐾 WoofWell</div>
+            <div>Pet Face Sheet</div>
+            <div style={{ fontSize: 11 }}>Printed {new Date().toLocaleDateString()}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Form */}
+      <Section icon="🐶" title="Basic Info">
+        <Field label="Date of Birth" field="dob" type="date" />
+        <Field label="Weight (lbs)" field="weight" placeholder="e.g. 45" />
+        <Field label="Color / Markings" field="color" placeholder="e.g. Golden with white chest" />
+        <Field label="Microchip #" field="microchip" placeholder="15-digit number" />
+      </Section>
+
+      <Section icon="🍽️" title="Food & Feeding">
+        <Field label="Food Brand" field="foodBrand" placeholder="e.g. Blue Buffalo Chicken" />
+        <Field label="Daily Amount" field="foodAmount" placeholder="e.g. 2 cups / day" />
+        <Field label="Feeding Schedule" field="feedingSchedule" placeholder="e.g. 7am & 5pm" />
+        <Field label="Treats Allowed" field="treatsAllowed" placeholder="e.g. Greenies, carrots" />
+      </Section>
+
+      <Section icon="⚕️" title="Medical & Allergies">
+        <Field label="Food Allergies" field="foodAllergies" placeholder="e.g. Chicken, grain" />
+        <Field label="Environmental Allergies" field="envAllergies" placeholder="e.g. Grass, pollen" />
+        <Field label="Medication Allergies" field="medAllergies" placeholder="e.g. Penicillin" />
+        <Field label="Current Medications" field="medications" placeholder="e.g. Heartgard monthly" />
+        <Field label="Known Conditions" field="conditions" placeholder="e.g. Hip dysplasia, allergies" wide />
+      </Section>
+
+      <Section icon="🧠" title="Personality & Behavior">
+        <Field label="Favorite Things" field="favThings" placeholder="e.g. Fetch, car rides, squeaky toys" />
+        <Field label="Dislikes" field="dislikes" placeholder="e.g. Thunder, strangers, baths" />
+        <Field label="Fear / Stress Triggers" field="triggers" placeholder="e.g. Loud noises, vacuum cleaner" />
+        <Field label="Best Rewards" field="rewards" placeholder="e.g. Treat, verbal praise, belly rub" />
+        <Field label="Behavioral Notes" field="behaviorNotes" placeholder="e.g. Resource guards food bowl, leash reactive" wide type="textarea" />
+      </Section>
+
+      <Section icon="🏥" title="Veterinarian">
+        <Field label="Vet Name" field="vetName" placeholder="Dr. Smith" />
+        <Field label="Clinic Name" field="vetClinic" placeholder="Happy Paws Animal Clinic" />
+        <Field label="Phone" field="vetPhone" placeholder="(555) 123-4567" />
+        <Field label="Address" field="vetAddress" placeholder="123 Main St, Denver CO" />
+      </Section>
+
+      <Section icon="🚨" title="Emergency Contact">
+        <Field label="Contact Name" field="emergencyName" placeholder="Jane Doe" />
+        <Field label="Phone" field="emergencyPhone" placeholder="(555) 987-6543" />
+        <Field label="Relationship" field="emergencyRelation" placeholder="e.g. Neighbor, family member" />
+      </Section>
+
+      <Section icon="📝" title="Special Notes">
+        <Field label="Anything else a caregiver, groomer, or vet should know" field="specialNotes" type="textarea" placeholder="e.g. Scared of nail trims, needs slow introduction to new dogs..." wide />
+      </Section>
+
+      <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 8 }}>
+        <button onClick={handleSave}
+          style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1.5px solid ${C.accent}`, background: saved ? C.success : "transparent", color: saved ? "white" : C.accent, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif", transition: "all .2s" }}>
+          {saved ? "✓ Saved!" : "💾 Save Face Sheet"}
+        </button>
+        <button onClick={handlePrint}
+          style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: "none", background: C.accent, color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>
+          🖨️ Print / Save as PDF
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────
 // ─── Amazon Affiliate Shop ────────────────────────────────────────
 const AMZN_TAG = "woofwell-20";
@@ -2545,6 +2717,7 @@ export default function WoofWell() {
   const [authLoading, setAuthLoading] = useState(true);
   const [dogs, setDogs] = useState([]);
   const [selectedDog, setSelectedDog] = useState(null);
+  const [faceSheetDog, setFaceSheetDog] = useState(null);
 
   const fetchDogs = async (uid) => {
     const { data } = await supabase.from("dogs").select("*").eq("user_id", uid).order("created_at", { ascending: false });
@@ -2622,7 +2795,12 @@ export default function WoofWell() {
 
       {/* Content */}
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px 60px" }}>
-        {tab === "dogs"      && <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)} onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }} />}
+        {tab === "dogs"      && (faceSheetDog
+          ? <PetFaceSheet dog={faceSheetDog} onBack={() => setFaceSheetDog(null)} />
+          : <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)}
+              onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }}
+              onViewFaceSheet={(dog) => setFaceSheetDog(dog)} />
+        )}
         {tab === "reminders" && <VetReminders userId={user.id} dogs={dogs} />}
         {tab === "weight"    && <WeightTracker userId={user.id} dogs={dogs} />}
         {tab === "vaccines"  && <VaccinationRecord userId={user.id} dogs={dogs} />}
