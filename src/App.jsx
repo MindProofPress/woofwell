@@ -447,7 +447,7 @@ function LandingPage({ onAuth }) {
               { asin: "B002KOO7WC", name: "Greenies Dental Treats", desc: "Clinically proven to reduce tartar buildup and freshen breath.", price: "~$28", tag: "🦷 Dental Health", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
               { asin: "B07YXNBK9T", name: "FURminator Deshedding Tool", desc: "Reduces shedding up to 90% — the groomer's secret weapon.", price: "~$35", tag: "✂️ Grooming", img: "https://m.media-amazon.com/images/I/718JC5tJgCL._AC_SL300_.jpg" },
               { asin: "B07CQH3XDB", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate foam base — ideal for senior dogs and joint support.", price: "~$40", tag: "🛏️ Best for Seniors", img: "https://m.media-amazon.com/images/I/71l-WOcAJXL._AC_SL300_.jpg" },
-              { asin: "B000GCCVYC", name: "Kong Classic Toy", desc: "Stuff with treats or peanut butter for hours of enrichment.", price: "~$14", tag: "🎾 Fan Favorite", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — perfect for training dogs and cats.", price: "~$12", tag: "🥩 Single Ingredient", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
               { asin: "B07LG7C7SB", name: "Ruffwear Front Range Harness", desc: "Padded, escape-proof harness with two leash attachment points.", price: "~$50", tag: "🔒 Safety Pick", img: "https://m.media-amazon.com/images/I/71KzP9NCEAL._AC_SL300_.jpg" },
               { asin: "B07ZF8T76R", name: "Paw5 Snuffle Mat", desc: "Nose-work feeding mat for mental stimulation & slow feeding.", price: "~$35", tag: "🧠 Enrichment", img: "https://m.media-amazon.com/images/I/71GFfPb1VBL._AC_SL300_.jpg" },
             ];
@@ -2608,7 +2608,7 @@ const SHOP_CATEGORIES = [
       { asin: "B0030FH9GY", name: "Blue Buffalo Life Protection Formula", desc: "Real chicken & garden veggies, no corn/wheat/soy.", price: "~$60", img: "https://m.media-amazon.com/images/I/71NHQjZ4CRL._AC_SL300_.jpg" },
       { asin: "B000084EPH", name: "Milk-Bone MaroSnacks Dog Treats", desc: "Classic crunchy treats with real bone marrow inside.", price: "~$10", img: "https://m.media-amazon.com/images/I/81v4WXLqFcL._AC_SL300_.jpg" },
       { asin: "B002KOO7WC", name: "Greenies Original Dental Treats", desc: "Vet recommended dental chews — fights tartar & freshens breath.", price: "~$28", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
-      { asin: "B000GCCVYC", name: "Kong Classic Dog Toy + Treat Stuffer", desc: "Fill with peanut butter or kibble for hours of enrichment.", price: "~$14", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — great for training dogs and cats.", price: "~$12", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
     ],
   },
   {
