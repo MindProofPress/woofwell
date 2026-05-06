@@ -2352,6 +2352,175 @@ function DogCompare({ isPro, onUpgrade, dogs }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────
+// ─── Amazon Affiliate Shop ────────────────────────────────────────
+const AMZN_TAG = "woofwell-20";
+function amzn(asin) { return `https://www.amazon.com/dp/${asin}?tag=${AMZN_TAG}`; }
+
+const SHOP_CATEGORIES = [
+  {
+    id: "health",
+    label: "Health & Supplements",
+    icon: "💊",
+    products: [
+      { asin: "B074MNGRB4", name: "Zesty Paws Multivitamin Chews", desc: "All-in-one soft chews — joints, immune, digestion, skin & coat.", price: "~$26", img: "https://m.media-amazon.com/images/I/81I6oN5EWBL._AC_SL300_.jpg" },
+      { asin: "B0016BXOYM", name: "Nutramax Cosequin DS Joint Supplement", desc: "Vet recommended #1 joint health brand for dogs.", price: "~$29", img: "https://m.media-amazon.com/images/I/71f3yPJNqhL._AC_SL300_.jpg" },
+      { asin: "B01N5QLVMI", name: "PetHonesty Omega-3 Fish Oil", desc: "Wild Alaskan salmon oil for skin, coat, and heart health.", price: "~$22", img: "https://m.media-amazon.com/images/I/71kLRxXk3WL._AC_SL300_.jpg" },
+      { asin: "B00JKWXNAI", name: "Vetri-Science Probiotic Everyday", desc: "Daily digestive probiotic in easy-to-give soft chew form.", price: "~$18", img: "https://m.media-amazon.com/images/I/71YsHPAifaL._AC_SL300_.jpg" },
+    ],
+  },
+  {
+    id: "food",
+    label: "Food & Treats",
+    icon: "🦴",
+    products: [
+      { asin: "B0030FH9GY", name: "Blue Buffalo Life Protection Formula", desc: "Real chicken & garden veggies, no corn/wheat/soy.", price: "~$60", img: "https://m.media-amazon.com/images/I/71NHQjZ4CRL._AC_SL300_.jpg" },
+      { asin: "B000084EPH", name: "Milk-Bone MaroSnacks Dog Treats", desc: "Classic crunchy treats with real bone marrow inside.", price: "~$10", img: "https://m.media-amazon.com/images/I/81v4WXLqFcL._AC_SL300_.jpg" },
+      { asin: "B002KOO7WC", name: "Greenies Original Dental Treats", desc: "Vet recommended dental chews — fights tartar & freshens breath.", price: "~$28", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
+      { asin: "B000GCCVYC", name: "Kong Classic Dog Toy + Treat Stuffer", desc: "Fill with peanut butter or kibble for hours of enrichment.", price: "~$14", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+    ],
+  },
+  {
+    id: "grooming",
+    label: "Grooming",
+    icon: "✂️",
+    products: [
+      { asin: "B07YXNBK9T", name: "Furminator Undercoat Deshedding Tool", desc: "Reduces shedding by up to 90% — loved by groomers.", price: "~$35", img: "https://m.media-amazon.com/images/I/718JC5tJgCL._AC_SL300_.jpg" },
+      { asin: "B07QF4QKJK", name: "Hertzko Self-Cleaning Slicker Brush", desc: "Removes loose fur, detangles, and massages — retractable bristles.", price: "~$16", img: "https://m.media-amazon.com/images/I/71DcAh6GLBL._AC_SL300_.jpg" },
+      { asin: "B01BLPJXBQ", name: "Burt's Bees Natural Shampoo", desc: "pH balanced, tear-free — gentle enough for puppies.", price: "~$8", img: "https://m.media-amazon.com/images/I/71HvHFlUFJL._AC_SL300_.jpg" },
+      { asin: "B001LZXP8I", name: "Dremel 7300-PT Nail Grinder", desc: "Safe, low-stress nail grinding — no sharp clipping needed.", price: "~$30", img: "https://m.media-amazon.com/images/I/61l8ICVNbXL._AC_SL300_.jpg" },
+    ],
+  },
+  {
+    id: "safety",
+    label: "Safety & ID",
+    icon: "🔒",
+    products: [
+      { asin: "B09WLJLN3C", name: "Fi Series 3 GPS Dog Collar", desc: "Real-time GPS tracking with escape alerts and activity monitoring.", price: "~$149", img: "https://m.media-amazon.com/images/I/61yRIf8QEBL._AC_SL300_.jpg" },
+      { asin: "B07LG7C7SB", name: "Ruffwear Front Range Dog Harness", desc: "Padded chest & belly panel — two leash attachment points.", price: "~$50", img: "https://m.media-amazon.com/images/I/71KzP9NCEAL._AC_SL300_.jpg" },
+      { asin: "B000FIVMIO", name: "Kurgo Dog Seat Belt Tether", desc: "Crash-tested safety tether for car travel.", price: "~$18", img: "https://m.media-amazon.com/images/I/71u-t+i2T9L._AC_SL300_.jpg" },
+      { asin: "B07MQZV22Y", name: "EzyDog Zero Shock Leash Absorber", desc: "Bungee leash attachment that reduces sudden pull impact.", price: "~$20", img: "https://m.media-amazon.com/images/I/71gNI71wKWL._AC_SL300_.jpg" },
+    ],
+  },
+  {
+    id: "comfort",
+    label: "Beds & Comfort",
+    icon: "🛏️",
+    products: [
+      { asin: "B07CQH3XDB", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate orthopedic foam — great for senior dogs and joints.", price: "~$40", img: "https://m.media-amazon.com/images/I/71l-WOcAJXL._AC_SL300_.jpg" },
+      { asin: "B07B4KXJHY", name: "Best Friends by Sheri Calming Donut Bed", desc: "Bolster sides let dogs curl up and feel secure — machine washable.", price: "~$35", img: "https://m.media-amazon.com/images/I/71pDiLZBBmL._AC_SL300_.jpg" },
+      { asin: "B07L85CSLL", name: "Coolaroo Elevated Pet Bed", desc: "Breathable mesh cot — great for summer and outdoor use.", price: "~$30", img: "https://m.media-amazon.com/images/I/71t0kSGM9BL._AC_SL300_.jpg" },
+      { asin: "B000C3KLX8", name: "ZippyPaws Luxury Crinkle Plush Toy", desc: "Squeaky, crinkly comfort toy for anxious or bored dogs.", price: "~$10", img: "https://m.media-amazon.com/images/I/81C7RVMD3NL._AC_SL300_.jpg" },
+    ],
+  },
+  {
+    id: "training",
+    label: "Training & Enrichment",
+    icon: "🎓",
+    products: [
+      { asin: "B07K5CK4C9", name: "PetSafe Easy Walk No-Pull Harness", desc: "Front-clip harness that gently discourages pulling.", price: "~$25", img: "https://m.media-amazon.com/images/I/71YFLZpZ2GL._AC_SL300_.jpg" },
+      { asin: "B008AACLYU", name: "StarMark Bob-A-Lot Interactive Feeder", desc: "Slow feeder toy — prevents bloat and keeps dogs mentally engaged.", price: "~$12", img: "https://m.media-amazon.com/images/I/81RDlOe2JuL._AC_SL300_.jpg" },
+      { asin: "B07ZF8T76R", name: "Snuffle Mat by Paw5", desc: "Nose-work feeding mat for mental stimulation and slow feeding.", price: "~$35", img: "https://m.media-amazon.com/images/I/71GFfPb1VBL._AC_SL300_.jpg" },
+      { asin: "B07ZPJCQ6Z", name: "iSPECLE Dog Treat Pouch with Clicker", desc: "Hip training pouch with built-in clicker and poop bag dispenser.", price: "~$15", img: "https://m.media-amazon.com/images/I/71ZxAJ07j4L._AC_SL300_.jpg" },
+    ],
+  },
+];
+
+function ShopTab() {
+  const [activeCategory, setActiveCategory] = useState("health");
+  const cat = SHOP_CATEGORIES.find(c => c.id === activeCategory) || SHOP_CATEGORIES[0];
+
+  return (
+    <div style={{ padding: "24px 16px 40px", maxWidth: 700, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+          🛍️ Dog Essentials Shop
+        </div>
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
+          Vet-approved products curated for your pup. Purchasing through these links supports WoofWell at no extra cost to you.
+        </div>
+        <div style={{ marginTop: 8, display: "inline-flex", gap: 4, alignItems: "center", background: "#FEF3C7", borderRadius: 8, padding: "4px 10px" }}>
+          <span style={{ fontSize: 12, color: "#92400E", fontWeight: 500 }}>🔗 Amazon affiliate links — prices shown are approximate</span>
+        </div>
+      </div>
+
+      {/* Category Pills */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+        {SHOP_CATEGORIES.map(c => (
+          <button
+            key={c.id}
+            onClick={() => setActiveCategory(c.id)}
+            style={{
+              padding: "6px 14px", borderRadius: 99, border: `1.5px solid ${activeCategory === c.id ? C.accent : C.border}`,
+              background: activeCategory === c.id ? C.accentDim : "white",
+              color: activeCategory === c.id ? C.accent : C.muted,
+              fontSize: 13, fontWeight: activeCategory === c.id ? 600 : 400,
+              cursor: "pointer", fontFamily: "'Outfit', sans-serif",
+              transition: "all 0.15s",
+            }}
+          >
+            {c.icon} {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Products Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+        {cat.products.map(p => (
+          <a
+            key={p.asin}
+            href={amzn(p.asin)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "none" }}
+          >
+            <div style={{
+              background: "white", border: `1px solid ${C.border}`, borderRadius: 14,
+              overflow: "hidden", transition: "box-shadow 0.2s, transform 0.2s",
+              cursor: "pointer",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.10)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}
+            >
+              <div style={{ background: "#F8F5F0", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, minHeight: 140 }}>
+                <img
+                  src={p.img}
+                  alt={p.name}
+                  style={{ maxHeight: 120, maxWidth: "100%", objectFit: "contain" }}
+                  onError={e => { e.target.style.display = "none"; e.target.parentElement.innerHTML = "<div style='font-size:48px'>🛒</div>"; }}
+                />
+              </div>
+              <div style={{ padding: "14px 16px 16px" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.3, fontFamily: "'Outfit', sans-serif" }}>
+                  {p.name}
+                </div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.4, marginBottom: 10 }}>
+                  {p.desc}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.accent }}>{p.price}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, background: C.accent, color: "white",
+                    padding: "4px 10px", borderRadius: 99,
+                  }}>
+                    View on Amazon →
+                  </span>
+                </div>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {/* Disclaimer */}
+      <div style={{ marginTop: 28, fontSize: 11, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
+        WoofWell participates in the Amazon Associates Program. As an Amazon Associate, we earn from qualifying purchases.
+        Prices and availability are subject to change. Product images are for reference only.
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id: "dogs",      label: "My Dogs",    icon: "🐕" },
   { id: "reminders", label: "Reminders",  icon: "🔔" },
@@ -2365,6 +2534,7 @@ const TABS = [
   { id: "compare",   label: "Compare",    icon: "⚖️" },
   { id: "tools",     label: "Tools",      icon: "🔧" },
   { id: "emergency", label: "Emergency",  icon: "🚨" },
+  { id: "shop",      label: "Shop",       icon: "🛍️" },
   { id: "pro",       label: "Pro",        icon: "👑" },
 ];
 
@@ -2464,6 +2634,7 @@ export default function WoofWell() {
         {tab === "compare"   && <DogCompare isPro={isPro} onUpgrade={() => setTab("pro")} dogs={dogs} />}
         {tab === "tools"     && <Tools dogs={dogs} />}
         {tab === "emergency" && <EmergencyGuide />}
+        {tab === "shop"      && <ShopTab />}
         {tab === "pro"       && <Paywall isPro={isPro} userId={user.id} onUnlock={() => { setIsPro(true); setTab("dogs"); }} />}
       </div>
     </div>
