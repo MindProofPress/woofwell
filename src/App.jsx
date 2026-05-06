@@ -427,6 +427,66 @@ function LandingPage({ onAuth }) {
         </div>
       </section>
 
+      {/* Amazon Shop Section */}
+      <section style={{ background: C.card, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "60px 24px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: C.text, margin: "0 0 8px" }}>
+              🐾 Vet-Approved Products We Love
+            </h2>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 auto", maxWidth: 520, lineHeight: 1.6 }}>
+              Curated essentials for happy, healthy dogs. Purchasing through these links supports WoofWell at no extra cost to you.
+            </p>
+          </div>
+
+          {/* Category tabs */}
+          {(() => {
+            const FEATURED = [
+              { asin: "B074MNGRB4", name: "Zesty Paws Multivitamin Chews", desc: "All-in-one soft chews for joints, immune health, digestion & coat.", price: "~$26", tag: "💊 Top Supplement", img: "https://m.media-amazon.com/images/I/81I6oN5EWBL._AC_SL300_.jpg" },
+              { asin: "B0016BXOYM", name: "Nutramax Cosequin Joint Supplement", desc: "Vet recommended #1 joint health brand — trusted for over 25 years.", price: "~$29", tag: "🏆 Vet Recommended", img: "https://m.media-amazon.com/images/I/71f3yPJNqhL._AC_SL300_.jpg" },
+              { asin: "B002KOO7WC", name: "Greenies Dental Treats", desc: "Clinically proven to reduce tartar buildup and freshen breath.", price: "~$28", tag: "🦷 Dental Health", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
+              { asin: "B07YXNBK9T", name: "FURminator Deshedding Tool", desc: "Reduces shedding up to 90% — the groomer's secret weapon.", price: "~$35", tag: "✂️ Grooming", img: "https://m.media-amazon.com/images/I/718JC5tJgCL._AC_SL300_.jpg" },
+              { asin: "B07CQH3XDB", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate foam base — ideal for senior dogs and joint support.", price: "~$40", tag: "🛏️ Best for Seniors", img: "https://m.media-amazon.com/images/I/71l-WOcAJXL._AC_SL300_.jpg" },
+              { asin: "B000GCCVYC", name: "Kong Classic Toy", desc: "Stuff with treats or peanut butter for hours of enrichment.", price: "~$14", tag: "🎾 Fan Favorite", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B07LG7C7SB", name: "Ruffwear Front Range Harness", desc: "Padded, escape-proof harness with two leash attachment points.", price: "~$50", tag: "🔒 Safety Pick", img: "https://m.media-amazon.com/images/I/71KzP9NCEAL._AC_SL300_.jpg" },
+              { asin: "B07ZF8T76R", name: "Paw5 Snuffle Mat", desc: "Nose-work feeding mat for mental stimulation & slow feeding.", price: "~$35", tag: "🧠 Enrichment", img: "https://m.media-amazon.com/images/I/71GFfPb1VBL._AC_SL300_.jpg" },
+            ];
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
+                {FEATURED.map(p => (
+                  <a key={p.asin} href={`https://www.amazon.com/dp/${p.asin}?tag=woofwell-20`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", cursor: "pointer", transition: "all 0.2s", height: "100%" }}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.10)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}
+                    >
+                      <div style={{ background: "#F8F5F0", display: "flex", alignItems: "center", justifyContent: "center", padding: 14, minHeight: 130, position: "relative" }}>
+                        <div style={{ position: "absolute", top: 8, left: 8, background: C.accent, color: "white", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99 }}>{p.tag}</div>
+                        <img src={p.img} alt={p.name} style={{ maxHeight: 110, maxWidth: "100%", objectFit: "contain" }}
+                          onError={e => { e.target.style.display = "none"; e.target.parentElement.innerHTML += "<div style='font-size:40px'>🛒</div>"; }} />
+                      </div>
+                      <div style={{ padding: "12px 14px 14px" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.3 }}>{p.name}</div>
+                        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4, marginBottom: 10 }}>{p.desc}</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>{p.price}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, background: C.accent, color: "white", padding: "3px 8px", borderRadius: 99 }}>Amazon →</span>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div style={{ textAlign: "center", marginTop: 28 }}>
+            <p style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              As an Amazon Associate, WoofWell earns from qualifying purchases. Prices subject to change.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Bottom CTA */}
       <section style={{ maxWidth: 560, margin: "0 auto", padding: "72px 24px", textAlign: "center" }}>
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: C.text, margin: "0 0 12px" }}>Start Caring Smarter</h2>
