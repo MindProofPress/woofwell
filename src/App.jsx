@@ -450,6 +450,11 @@ function LandingPage({ onAuth }) {
               { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — perfect for training dogs and cats.", price: "~$12", tag: "🥩 Single Ingredient", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
               { asin: "B07LG7C7SB", name: "Ruffwear Front Range Harness", desc: "Padded, escape-proof harness with two leash attachment points.", price: "~$50", tag: "🔒 Safety Pick", img: "https://m.media-amazon.com/images/I/71KzP9NCEAL._AC_SL300_.jpg" },
               { asin: "B07ZF8T76R", name: "Paw5 Snuffle Mat", desc: "Nose-work feeding mat for mental stimulation & slow feeding.", price: "~$35", tag: "🧠 Enrichment", img: "https://m.media-amazon.com/images/I/71GFfPb1VBL._AC_SL300_.jpg" },
+              { asin: "B0C1PXJNKD", name: "Earth Animal No-Hide Chew Strips", desc: "All-natural rawhide alternative — digestible & long-lasting.", price: "~$15", tag: "🦴 Safe Chews", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0F1BBH1HM", name: "WOOF Pupsicle Interactive Toy", desc: "Long-lasting lick toy — fill with treats or wet food.", price: "~$20", tag: "🧊 Fan Favorite", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0C15QKZN8", name: "Woof Pupsicle Refill Pops", desc: "Premade frozen treat refills — just freeze and serve.", price: "~$18", tag: "❄️ Frozen Treats", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B001CS3D1W", name: "Kong Stuffin' Paste Treat", desc: "Easy-squeeze paste perfect for stuffing Kongs and lick mats.", price: "~$10", tag: "🎾 Kong Essential", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0DJMPQQ5H", name: "Earth Animal No-Hide Chew Sticks", desc: "Natural rawhide-free chew sticks — gentle on digestion.", price: "~$14", tag: "🌿 All Natural", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
             ];
             return (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
@@ -2609,6 +2614,11 @@ const SHOP_CATEGORIES = [
       { asin: "B000084EPH", name: "Milk-Bone MaroSnacks Dog Treats", desc: "Classic crunchy treats with real bone marrow inside.", price: "~$10", img: "https://m.media-amazon.com/images/I/81v4WXLqFcL._AC_SL300_.jpg" },
       { asin: "B002KOO7WC", name: "Greenies Original Dental Treats", desc: "Vet recommended dental chews — fights tartar & freshens breath.", price: "~$28", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
       { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — great for training dogs and cats.", price: "~$12", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0C1PXJNKD", name: "Earth Animal No-Hide Chew Strips", desc: "All-natural rawhide alternative — digestible and long-lasting.", price: "~$15", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0DJMPQQ5H", name: "Earth Animal No-Hide Chew Sticks", desc: "Natural rawhide-free chew sticks — gentle on digestion.", price: "~$14", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0F1BBH1HM", name: "WOOF Pupsicle Interactive Toy", desc: "Long-lasting lick toy — fill with treats or wet food for enrichment.", price: "~$20", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0C15QKZN8", name: "Woof Pupsicle Refill Pops", desc: "Premade frozen treat refills — just freeze and serve.", price: "~$18", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B001CS3D1W", name: "Kong Stuffin' Paste Treat", desc: "Easy-squeeze paste perfect for stuffing Kongs and lick mats.", price: "~$10", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
     ],
   },
   {
