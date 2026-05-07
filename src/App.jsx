@@ -547,8 +547,8 @@ function Paywall({ onUnlock, isPro, userId }) {
     onUnlock();
   };
 
-  const monthly = 4.99;
-  const annual = 3.33;
+  const monthly = 2.99;
+  const annual = 1.67;
   const price = billing === "annual" ? annual : monthly;
   const inputStyle = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 };
 
@@ -570,7 +570,7 @@ function Paywall({ onUnlock, isPro, userId }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.pro }}>WoofWell Pro — {billing === "annual" ? "Annual" : "Monthly"}</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{billing === "annual" ? `$${(3.33 * 12).toFixed(2)}/year` : "$4.99/month"}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{billing === "annual" ? "$19.99/year" : "$2.99/month"}</div>
               </div>
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: C.pro }}>${price.toFixed(2)}<span style={{ fontSize: 13, color: C.muted }}>/mo</span></div>
             </div>
@@ -614,12 +614,12 @@ function Paywall({ onUnlock, isPro, userId }) {
   );
 
   const features = [
+    ["🐾", "Pet Face Sheet", "Printable emergency care profile"],
     ["📸", "Photo Breed Identifier", "Unlimited scans"],
-    ["🩺", "Symptom Checker", "AI triage + urgency ratings"],
-    ["📋", "Full Health Profiles", "All breeds, all life stages"],
-    ["📄", "PDF Export", "Download & share reports"],
+    ["🩺", "Symptom Checker", "Unlimited AI triage + urgency ratings"],
+    ["📋", "Unlimited Dogs", "Add all your pets"],
+    ["📄", "PDF Export", "Download & share health reports"],
     ["🔔", "Vet Reminders", "Vaccination & checkup alerts"],
-    ["💬", "Priority Support", "Fast responses"],
   ];
 
   return (
@@ -648,7 +648,7 @@ function Paywall({ onUnlock, isPro, userId }) {
             cursor: "pointer", transition: "all 0.15s", position: "relative"
           }}>
             {b.charAt(0).toUpperCase() + b.slice(1)}
-            {b === "annual" && <span style={{ marginLeft: 6, background: C.success, color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>-33%</span>}
+            {b === "annual" && <span style={{ marginLeft: 6, background: C.success, color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>-44%</span>}
           </button>
         ))}
       </div>
@@ -659,7 +659,7 @@ function Paywall({ onUnlock, isPro, userId }) {
           <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 42, fontWeight: 700, color: C.pro, lineHeight: 1 }}>${price.toFixed(2)}</span>
           <span style={{ color: C.muted, fontSize: 13, paddingBottom: 6 }}>/month{billing === "annual" ? ", billed annually" : ""}</span>
         </div>
-        {billing === "annual" && <div style={{ color: C.muted, fontSize: 12 }}>That's ${(annual * 12).toFixed(2)}/year — save ${((monthly - annual) * 12).toFixed(2)}</div>}
+        {billing === "annual" && <div style={{ color: C.muted, fontSize: 12 }}>That's $19.99/year — save ${((monthly - annual) * 12).toFixed(2)} vs monthly</div>}
       </Card>
 
       {/* Features */}
@@ -1125,7 +1125,7 @@ function SymptomChecker({ isPro, onUpgrade, userId, dogs = [] }) {
 }
 
 // ─── SAVED DOGS ───────────────────────────────────────────────────
-function SavedDogs({ userId, dogs, onDogsChange, onViewProfile, onViewFaceSheet }) {
+function SavedDogs({ userId, dogs, onDogsChange, onViewProfile, onViewFaceSheet, isPro }) {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
@@ -1384,8 +1384,8 @@ function SavedDogs({ userId, dogs, onDogsChange, onViewProfile, onViewFaceSheet 
                   Health Profile →
                 </button>
                 <button onClick={() => onViewFaceSheet(dog)}
-                  style={{ flex: 1, padding: "10px 0", border: `1.5px solid ${C.accent}`, borderRadius: 8, background: "transparent", color: C.accent, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
-                  📋 Face Sheet
+                  style={{ flex: 1, padding: "10px 0", border: `1.5px solid ${isPro ? C.accent : C.pro}`, borderRadius: 8, background: isPro ? "transparent" : C.proDim, color: isPro ? C.accent : C.pro, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>
+                  {isPro ? "📋 Face Sheet" : "👑 Face Sheet"}
                 </button>
               </div>
             </>
@@ -2869,7 +2869,8 @@ export default function WoofWell() {
           ? <PetFaceSheet dog={faceSheetDog} onBack={() => setFaceSheetDog(null)} />
           : <SavedDogs userId={user.id} dogs={dogs} onDogsChange={() => fetchDogs(user.id)}
               onViewProfile={(dog) => { setSelectedDog(dog); setTab("health"); }}
-              onViewFaceSheet={(dog) => setFaceSheetDog(dog)} />
+              onViewFaceSheet={(dog) => { if (isPro) setFaceSheetDog(dog); else setTab("pro"); }}
+              isPro={isPro} />
         )}
         {tab === "reminders" && <VetReminders userId={user.id} dogs={dogs} />}
         {tab === "weight"    && <WeightTracker userId={user.id} dogs={dogs} />}
