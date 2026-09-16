@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext, useCallback, createContext } from "react";
 import { supabase } from "./supabase";
 
 // ─── Design Tokens ───────────────────────────────────────────────
@@ -86,45 +86,26 @@ function parseMarkdown(text) {
 }
 
 async function callClaude(systemPrompt, userPrompt, imageBase64 = null, imageMediaType = "image/jpeg") {
-  const content = imageBase64
-    ? [
-        { type: "image", source: { type: "base64", media_type: imageMediaType, data: imageBase64 } },
-        { type: "text", text: userPrompt }
-      ]
-    : userPrompt;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/claude", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: "user", content }],
+      systemPrompt,
+      userPrompt,
+      imageBase64,
+      imageMediaType,
     }),
   });
   const data = await res.json();
-  const text = data.content?.find(b => b.type === "text")?.text;
+  if (!res.ok) throw new Error(data.error || "AI unavailable");
+  const text = data.text;
   if (!text) throw new Error("No response");
   return text;
 }
 
 // ─── Icons ────────────────────────────────────────────────────────
-const PawIcon = ({ size = 24, color = C.accent }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    {/* Main pad - large rounded base */}
-    <ellipse cx="16" cy="21" rx="8" ry="7" fill={color} />
-    {/* Four small toe beans arranged in an arc above */}
-    <ellipse cx="8"  cy="13" rx="3" ry="3.5" fill={color} />
-    <ellipse cx="13" cy="10" rx="3" ry="3.5" fill={color} />
-    <ellipse cx="19" cy="10" rx="3" ry="3.5" fill={color} />
-    <ellipse cx="24" cy="13" rx="3" ry="3.5" fill={color} />
-  </svg>
+const PawIcon = ({ size = 24, color }) => (
+  <img src="/paw-icon.png" width={size} height={size} alt="" style={{ display: "inline-block", verticalAlign: "middle", objectFit: "contain" }} />
 );
 
 const Spinner = () => (
@@ -442,31 +423,31 @@ function LandingPage({ onAuth }) {
           {/* Category tabs */}
           {(() => {
             const FEATURED = [
-              { asin: "B074MNGRB4", name: "Zesty Paws Multivitamin Chews", desc: "All-in-one soft chews for joints, immune health, digestion & coat.", price: "~$26", tag: "💊 Top Supplement", img: "https://m.media-amazon.com/images/I/81I6oN5EWBL._AC_SL300_.jpg" },
-              { asin: "B0016BXOYM", name: "Nutramax Cosequin Joint Supplement", desc: "Vet recommended #1 joint health brand — trusted for over 25 years.", price: "~$29", tag: "🏆 Vet Recommended", img: "https://m.media-amazon.com/images/I/71f3yPJNqhL._AC_SL300_.jpg" },
-              { asin: "B002KOO7WC", name: "Greenies Dental Treats", desc: "Clinically proven to reduce tartar buildup and freshen breath.", price: "~$28", tag: "🦷 Dental Health", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
-              { asin: "B07YXNBK9T", name: "FURminator Deshedding Tool", desc: "Reduces shedding up to 90% — the groomer's secret weapon.", price: "~$35", tag: "✂️ Grooming", img: "https://m.media-amazon.com/images/I/718JC5tJgCL._AC_SL300_.jpg" },
-              { asin: "B07CQH3XDB", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate foam base — ideal for senior dogs and joint support.", price: "~$40", tag: "🛏️ Best for Seniors", img: "https://m.media-amazon.com/images/I/71l-WOcAJXL._AC_SL300_.jpg" },
-              { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — perfect for training dogs and cats.", price: "~$12", tag: "🥩 Single Ingredient", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-              { asin: "B07LG7C7SB", name: "Ruffwear Front Range Harness", desc: "Padded, escape-proof harness with two leash attachment points.", price: "~$50", tag: "🔒 Safety Pick", img: "https://m.media-amazon.com/images/I/71KzP9NCEAL._AC_SL300_.jpg" },
-              { asin: "B07ZF8T76R", name: "Paw5 Snuffle Mat", desc: "Nose-work feeding mat for mental stimulation & slow feeding.", price: "~$35", tag: "🧠 Enrichment", img: "https://m.media-amazon.com/images/I/71GFfPb1VBL._AC_SL300_.jpg" },
-              { asin: "B0C1PXJNKD", name: "Earth Animal No-Hide Chew Strips", desc: "All-natural rawhide alternative — digestible & long-lasting.", price: "~$15", tag: "🦴 Safe Chews", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-              { asin: "B0F1BBH1HM", name: "WOOF Pupsicle Interactive Toy", desc: "Long-lasting lick toy — fill with treats or wet food.", price: "~$20", tag: "🧊 Fan Favorite", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-              { asin: "B0C15QKZN8", name: "Woof Pupsicle Refill Pops", desc: "Premade frozen treat refills — just freeze and serve.", price: "~$18", tag: "❄️ Frozen Treats", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-              { asin: "B001CS3D1W", name: "Kong Stuffin' Paste Treat", desc: "Easy-squeeze paste perfect for stuffing Kongs and lick mats.", price: "~$10", tag: "🎾 Kong Essential", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-              { asin: "B0DJMPQQ5H", name: "Earth Animal No-Hide Chew Sticks", desc: "Natural rawhide-free chew sticks — gentle on digestion.", price: "~$14", tag: "🌿 All Natural", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B07121B839", name: "Zesty Paws Multivitamin Chews", desc: "All-in-one soft chews for joints, immune health, digestion & coat.", price: "~$26", tag: "💊 Top Supplement", img: "/products/81I6oN5EWBL._AC_SL300_.jpg" },
+              { asin: "B00028ZLTU", name: "Nutramax Cosequin Joint Supplement", desc: "Vet recommended #1 joint health brand — trusted for over 25 years.", price: "~$29", tag: "🏆 Vet Recommended", img: "/products/71f3yPJNqhL._AC_SL300_.jpg" },
+              { asin: "B06ZZCKFFB", name: "Greenies Dental Treats", desc: "Clinically proven to reduce tartar buildup and freshen breath.", price: "~$28", tag: "🦷 Dental Health", img: "/products/71HsT-m6OdL._AC_SL300_.jpg" },
+              { asin: "B07MZN2VZC", name: "FURminator Deshedding Tool", desc: "Reduces shedding up to 90% — the groomer's secret weapon.", price: "~$35", tag: "✂️ Grooming", img: "/products/718JC5tJgCL._AC_SL300_.jpg" },
+              { asin: "B07P9S5SVK", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate foam base — ideal for senior dogs and joint support.", price: "~$40", tag: "🛏️ Best for Seniors", img: "/products/71l-WOcAJXL._AC_SL300_.jpg" },
+              { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — perfect for training dogs and cats.", price: "~$12", tag: "🥩 Single Ingredient", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B01N10INNX", name: "Ruffwear Front Range Harness", desc: "Padded, escape-proof harness with two leash attachment points.", price: "~$50", tag: "🔒 Safety Pick", img: "/products/71KzP9NCEAL._AC_SL300_.jpg" },
+              { asin: "B01N1FV55I", name: "Paw5 Snuffle Mat", desc: "Nose-work feeding mat for mental stimulation & slow feeding.", price: "~$35", tag: "🧠 Enrichment", img: "/products/71GFfPb1VBL._AC_SL300_.jpg" },
+              { asin: "B0C1PXJNKD", name: "Earth Animal No-Hide Chew Strips", desc: "All-natural rawhide alternative — digestible & long-lasting.", price: "~$15", tag: "🦴 Safe Chews", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0F1BBH1HM", name: "WOOF Pupsicle Interactive Toy", desc: "Long-lasting lick toy — fill with treats or wet food.", price: "~$20", tag: "🧊 Fan Favorite", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0C15QKZN8", name: "Woof Pupsicle Refill Pops", desc: "Premade frozen treat refills — just freeze and serve.", price: "~$18", tag: "❄️ Frozen Treats", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B001CS3D1W", name: "Kong Stuffin' Paste Treat", desc: "Easy-squeeze paste perfect for stuffing Kongs and lick mats.", price: "~$10", tag: "🎾 Kong Essential", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+              { asin: "B0DJMPQQ5H", name: "Earth Animal No-Hide Chew Sticks", desc: "Natural rawhide-free chew sticks — gentle on digestion.", price: "~$14", tag: "🌿 All Natural", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
             ];
             return (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
                 {FEATURED.map(p => (
-                  <a key={p.asin} href={`https://www.amazon.com/dp/${p.asin}?tag=woofwell-20`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                  <a key={p.asin} href={`https://www.amazon.com/dp/${p.asin}?tag=woofwell20-20`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
                     <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", cursor: "pointer", transition: "all 0.2s", height: "100%" }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.10)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}
                     >
                       <div style={{ background: "#F8F5F0", display: "flex", alignItems: "center", justifyContent: "center", padding: 14, minHeight: 130, position: "relative" }}>
                         <div style={{ position: "absolute", top: 8, left: 8, background: C.accent, color: "white", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99 }}>{p.tag}</div>
-                        <img src={p.img} alt={p.name} style={{ maxHeight: 110, maxWidth: "100%", objectFit: "contain" }}
+                        <img src={`/products/${p.asin}.jpg`} alt={p.name} style={{ maxHeight: 110, maxWidth: "100%", objectFit: "contain" }}
                           onError={e => { e.target.style.display = "none"; e.target.parentElement.innerHTML += "<div style='font-size:40px'>🛒</div>"; }} />
                       </div>
                       <div style={{ padding: "12px 14px 14px" }}>
@@ -523,87 +504,36 @@ function LandingPage({ onAuth }) {
 }
 
 // ─── PAYWALL ─────────────────────────────────────────────────────
+const STRIPE_MONTHLY = "https://buy.stripe.com/28EaEQe2ldgleWE9mpcjS00";
+const STRIPE_ANNUAL  = "https://buy.stripe.com/fZu8wIaQ9b8d7ucdCFcjS01";
+
 function Paywall({ onUnlock, isPro, userId }) {
   const [billing, setBilling] = useState("annual");
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
-  const [processing, setProcessing] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const formatCard = (v) => v.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
-  const formatExpiry = (v) => { const d = v.replace(/\D/g, "").slice(0, 4); return d.length >= 3 ? d.slice(0, 2) + "/" + d.slice(2) : d; };
-
-  const handlePayment = async () => {
-    setProcessing(true);
-    await new Promise(r => setTimeout(r, 2200));
-    await supabase.from("profiles").upsert({ id: userId, is_pro: true, pro_since: new Date().toISOString() }, { onConflict: "id" });
-    localStorage.setItem(`pro_${userId}`, "true");
-    setProcessing(false);
-    setDone(true);
-    await new Promise(r => setTimeout(r, 1200));
-    onUnlock();
-  };
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState("");
 
   const monthly = 2.99;
   const annual = 1.67;
   const price = billing === "annual" ? annual : monthly;
-  const inputStyle = { width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: C.text, fontFamily: "'Outfit', sans-serif", marginBottom: 14 };
 
-  if (showCheckout) return (
-    <div style={{ animation: "fadeUp 0.3s ease" }}>
-      {done ? (
-        <Card style={{ textAlign: "center", padding: "50px 20px", borderColor: C.success }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: C.success, fontWeight: 700 }}>Payment Successful!</div>
-          <div style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>Activating your Pro account...</div>
-        </Card>
-      ) : (
-        <>
-          <button onClick={() => setShowCheckout(false)} className="back-btn"
-            style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", marginBottom: 16, fontFamily: "'Outfit', sans-serif", padding: 0 }}>
-            ← Back
-          </button>
-          <Card style={{ marginBottom: 14, background: C.proDim, borderColor: C.pro }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.pro }}>WoofWell Pro — {billing === "annual" ? "Annual" : "Monthly"}</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{billing === "annual" ? "$19.99/year" : "$2.99/month"}</div>
-              </div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, color: C.pro }}>${price.toFixed(2)}<span style={{ fontSize: 13, color: C.muted }}>/mo</span></div>
-            </div>
-          </Card>
-          <Card>
-            <SectionLabel>Name on Card</SectionLabel>
-            <input value={cardName} onChange={e => setCardName(e.target.value)} placeholder="Jane Smith" style={inputStyle} />
-            <SectionLabel>Card Number</SectionLabel>
-            <input value={cardNumber} onChange={e => setCardNumber(formatCard(e.target.value))} placeholder="1234 5678 9012 3456" style={inputStyle} />
-            <div style={{ display: "flex", gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <SectionLabel>Expiry</SectionLabel>
-                <input value={expiry} onChange={e => setExpiry(formatExpiry(e.target.value))} placeholder="MM/YY" style={{ ...inputStyle, marginBottom: 0 }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <SectionLabel>CVV</SectionLabel>
-                <input value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="123" style={{ ...inputStyle, marginBottom: 0 }} />
-              </div>
-            </div>
-          </Card>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", margin: "12px 0", color: C.muted, fontSize: 12 }}>
-            🔒 Secured with 256-bit SSL encryption
-          </div>
-          <ActionBtn onClick={handlePayment} disabled={!cardName || cardNumber.replace(/\s/g, "").length < 16 || expiry.length < 5 || cvv.length < 3} loading={processing} style={{ background: C.pro }}>
-            {processing ? "Processing payment..." : `💳 Pay $${price.toFixed(2)}/mo`}
-          </ActionBtn>
-          <div style={{ textAlign: "center", color: C.muted, fontSize: 11, marginTop: 10 }}>
-            This is a demo — no real charge will occur
-          </div>
-        </>
-      )}
-    </div>
-  );
+  const handleCheckout = () => {
+    const base = billing === "annual" ? STRIPE_ANNUAL : STRIPE_MONTHLY;
+    const url = userId ? `${base}?client_reference_id=${userId}` : base;
+    window.open(url, "_blank");
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    setRestoreMsg("");
+    const { data } = await supabase.from("profiles").select("is_pro").eq("id", userId).single();
+    if (data?.is_pro) {
+      localStorage.setItem(`pro_${userId}`, "true");
+      onUnlock();
+    } else {
+      setRestoreMsg("No active Pro subscription found for this account.");
+    }
+    setRestoring(false);
+  };
 
   if (isPro) return (
     <Card style={{ textAlign: "center", borderColor: C.pro }}>
@@ -687,7 +617,7 @@ function Paywall({ onUnlock, isPro, userId }) {
           <span style={{ marginLeft: "auto", fontSize: 12, color: C.pro }}>Switch →</span>
         </div>
       )}
-      <ActionBtn onClick={() => setShowCheckout(true)} style={{ background: C.pro, marginBottom: 10 }}>
+      <ActionBtn onClick={handleCheckout} style={{ background: C.pro, marginBottom: 10 }}>
         👑 Start Pro — ${price.toFixed(2)}/mo
       </ActionBtn>
       <button className="free-btn" style={{
@@ -698,7 +628,16 @@ function Paywall({ onUnlock, isPro, userId }) {
         Continue with Free (3 searches/day)
       </button>
       <div style={{ textAlign: "center", color: C.muted, fontSize: 11, marginTop: 12 }}>
-        Cancel anytime · No hidden fees · 7-day free trial
+        Cancel anytime · No hidden fees · Secure checkout via Stripe
+      </div>
+      <div style={{ textAlign: "center", marginTop: 14 }}>
+        <button onClick={handleRestore} disabled={restoring} style={{
+          background: "none", border: "none", color: C.muted, fontSize: 12,
+          cursor: "pointer", fontFamily: "'Outfit', sans-serif", textDecoration: "underline"
+        }}>
+          {restoring ? "Checking..." : "Already subscribed? Restore access"}
+        </button>
+        {restoreMsg && <div style={{ color: "#DC2626", fontSize: 12, marginTop: 6 }}>{restoreMsg}</div>}
       </div>
     </div>
   );
@@ -2276,13 +2215,17 @@ function VetChat({ isPro, onUpgrade, dogs }) {
     setLoading(true);
     const dogCtx = selectedDog ? `The user is asking about their ${selectedDog.age} ${selectedDog.breed} named ${selectedDog.name}.` : "";
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 600, system: `You are a friendly, knowledgeable veterinary AI assistant for WoofWell. ${dogCtx} Give helpful, accurate dog health advice. Always recommend consulting a real vet for serious concerns. Keep responses warm and concise.`, messages: newMsgs }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemPrompt: `You are a friendly, knowledgeable veterinary AI assistant for WoofWell. ${dogCtx} Give helpful, accurate dog health advice. Always recommend consulting a real vet for serious concerns. Keep responses warm and concise.`,
+          messages: newMsgs,
+          maxTokens: 500,
+        }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.content?.find(b => b.type === "text")?.text || "Sorry, I couldn't respond." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: data.text || "Sorry, I couldn't respond." }]);
     } catch { setMessages(prev => [...prev, { role: "assistant", content: "Connection issue. Please try again." }]); }
     setLoading(false);
   };
@@ -2448,12 +2391,73 @@ function saveFaceSheet(dogId, data) {
   localStorage.setItem(`fs_${dogId}`, JSON.stringify(data));
 }
 
+// Context so Field/Section can live outside PetFaceSheet without prop-drilling
+const FaceSheetCtx = createContext(null);
+
+const FS_INPUT = { width: "100%", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "'Outfit', sans-serif", color: C.text, background: "#FAFAFA" };
+
+function FaceField({ label, field, placeholder = "", type = "text", wide = false }) {
+  const { data, set } = useContext(FaceSheetCtx);
+  return (
+    <div style={{ marginBottom: 10, gridColumn: wide ? "1 / -1" : undefined }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 3, textTransform: "uppercase", letterSpacing: ".4px" }}>{label}</div>
+      {type === "textarea"
+        ? <textarea value={data[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
+            style={{ ...FS_INPUT, minHeight: 70, resize: "vertical", lineHeight: 1.5 }} />
+        : <input type={type} value={data[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
+            style={FS_INPUT} />
+      }
+    </div>
+  );
+}
+
+function FaceDobPicker() {
+  const { data, set } = useContext(FaceSheetCtx);
+  const parts = (data.dob || "").split("-");
+  const yr = parts[0] || "", mo = parts[1] || "", dy = parts[2] || "";
+  const update = (y, m, d) => set("dob", y && m && d ? `${y}-${m}-${d}` : "");
+  const curYear = new Date().getFullYear();
+  const SEL = { ...FS_INPUT, width: "auto", flex: 1, padding: "8px 6px" };
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 3, textTransform: "uppercase", letterSpacing: ".4px" }}>Date of Birth</div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <select value={mo} onChange={e => update(yr, e.target.value, dy)} style={SEL}>
+          <option value="">Month</option>
+          {months.map((m, i) => <option key={i} value={String(i+1).padStart(2,"0")}>{m}</option>)}
+        </select>
+        <select value={dy} onChange={e => update(yr, mo, e.target.value)} style={SEL}>
+          <option value="">Day</option>
+          {Array.from({length:31},(_,i)=>i+1).map(d => <option key={d} value={String(d).padStart(2,"0")}>{d}</option>)}
+        </select>
+        <select value={yr} onChange={e => update(e.target.value, mo, dy)} style={SEL}>
+          <option value="">Year</option>
+          {Array.from({length:25},(_,i)=>curYear-i).map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function FaceSection({ icon, title, children }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 6, borderBottom: `1.5px solid ${C.border}` }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 17, fontWeight: 700, color: C.text }}>{title}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>{children}</div>
+    </div>
+  );
+}
+
 function PetFaceSheet({ dog, onBack }) {
   const [data, setData] = useState(() => loadFaceSheet(dog.id));
   const [saved, setSaved] = useState(false);
   const [printing, setPrinting] = useState(false);
 
-  const set = (field, val) => setData(d => ({ ...d, [field]: val }));
+  const set = useCallback((field, val) => setData(d => ({ ...d, [field]: val })), []);
 
   const handleSave = () => {
     saveFaceSheet(dog.id, data);
@@ -2467,29 +2471,12 @@ function PetFaceSheet({ dog, onBack }) {
     setTimeout(() => { window.print(); setPrinting(false); }, 100);
   };
 
-  const Field = ({ label, field, placeholder = "", type = "text", wide = false }) => (
-    <div style={{ marginBottom: 10, gridColumn: wide ? "1 / -1" : undefined }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 3, textTransform: "uppercase", letterSpacing: ".4px" }}>{label}</div>
-      {type === "textarea"
-        ? <textarea value={data[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
-            style={{ width: "100%", minHeight: 70, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "'Outfit', sans-serif", color: C.text, background: "#FAFAFA", resize: "vertical", lineHeight: 1.5 }} />
-        : <input type={type} value={data[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder}
-            style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "'Outfit', sans-serif", color: C.text, background: "#FAFAFA" }} />
-      }
-    </div>
-  );
-
-  const Section = ({ icon, title, children }) => (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 6, borderBottom: `1.5px solid ${C.border}` }}>
-        <span style={{ fontSize: 16 }}>{icon}</span>
-        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 17, fontWeight: 700, color: C.text }}>{title}</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>{children}</div>
-    </div>
-  );
+  // Aliases so JSX below stays unchanged
+  const Field = FaceField;
+  const Section = FaceSection;
 
   return (
+    <FaceSheetCtx.Provider value={{ data, set }}>
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "20px 16px 60px" }}>
       {/* Header */}
       <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
@@ -2528,7 +2515,7 @@ function PetFaceSheet({ dog, onBack }) {
 
       {/* Form */}
       <Section icon="🐶" title="Basic Info">
-        <Field label="Date of Birth" field="dob" type="date" />
+        <FaceDobPicker />
         <Field label="Weight (lbs)" field="weight" placeholder="e.g. 45" />
         <Field label="Color / Markings" field="color" placeholder="e.g. Golden with white chest" />
         <Field label="Microchip #" field="microchip" placeholder="15-digit number" />
@@ -2585,13 +2572,15 @@ function PetFaceSheet({ dog, onBack }) {
         </button>
       </div>
     </div>
+    </FaceSheetCtx.Provider>
   );
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────
 // ─── Amazon Affiliate Shop ────────────────────────────────────────
-const AMZN_TAG = "woofwell-20";
+const AMZN_TAG = "woofwell20-20";
 function amzn(asin) { return `https://www.amazon.com/dp/${asin}?tag=${AMZN_TAG}`; }
+function amznImg(asin) { return `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${asin}&Format=_SL250_&ID=AsinImage&MarketPlace=US&ServiceVersion=20070822&WS=1&tag=${AMZN_TAG}`; }
 
 const SHOP_CATEGORIES = [
   {
@@ -2599,10 +2588,10 @@ const SHOP_CATEGORIES = [
     label: "Health & Supplements",
     icon: "💊",
     products: [
-      { asin: "B074MNGRB4", name: "Zesty Paws Multivitamin Chews", desc: "All-in-one soft chews — joints, immune, digestion, skin & coat.", price: "~$26", img: "https://m.media-amazon.com/images/I/81I6oN5EWBL._AC_SL300_.jpg" },
-      { asin: "B0016BXOYM", name: "Nutramax Cosequin DS Joint Supplement", desc: "Vet recommended #1 joint health brand for dogs.", price: "~$29", img: "https://m.media-amazon.com/images/I/71f3yPJNqhL._AC_SL300_.jpg" },
-      { asin: "B01N5QLVMI", name: "PetHonesty Omega-3 Fish Oil", desc: "Wild Alaskan salmon oil for skin, coat, and heart health.", price: "~$22", img: "https://m.media-amazon.com/images/I/71kLRxXk3WL._AC_SL300_.jpg" },
-      { asin: "B00JKWXNAI", name: "Vetri-Science Probiotic Everyday", desc: "Daily digestive probiotic in easy-to-give soft chew form.", price: "~$18", img: "https://m.media-amazon.com/images/I/71YsHPAifaL._AC_SL300_.jpg" },
+      { asin: "B07121B839", name: "Zesty Paws Multivitamin Chews", desc: "All-in-one soft chews — joints, immune, digestion, skin & coat.", price: "~$26", img: "/products/81I6oN5EWBL._AC_SL300_.jpg" },
+      { asin: "B00028ZLTU", name: "Nutramax Cosequin DS Joint Supplement", desc: "Vet recommended #1 joint health brand for dogs.", price: "~$29", img: "/products/71f3yPJNqhL._AC_SL300_.jpg" },
+      { asin: "B082BCP45S", name: "PetHonesty Omega-3 Fish Oil", desc: "Wild Alaskan salmon oil for skin, coat, and heart health.", price: "~$22", img: "/products/71kLRxXk3WL._AC_SL300_.jpg" },
+      { asin: "B0B15PBBGZ", name: "Vetri-Science Probiotic Everyday", desc: "Daily digestive probiotic in easy-to-give soft chew form.", price: "~$18", img: "/products/71YsHPAifaL._AC_SL300_.jpg" },
     ],
   },
   {
@@ -2610,15 +2599,15 @@ const SHOP_CATEGORIES = [
     label: "Food & Treats",
     icon: "🦴",
     products: [
-      { asin: "B0030FH9GY", name: "Blue Buffalo Life Protection Formula", desc: "Real chicken & garden veggies, no corn/wheat/soy.", price: "~$60", img: "https://m.media-amazon.com/images/I/71NHQjZ4CRL._AC_SL300_.jpg" },
-      { asin: "B000084EPH", name: "Milk-Bone MaroSnacks Dog Treats", desc: "Classic crunchy treats with real bone marrow inside.", price: "~$10", img: "https://m.media-amazon.com/images/I/81v4WXLqFcL._AC_SL300_.jpg" },
-      { asin: "B002KOO7WC", name: "Greenies Original Dental Treats", desc: "Vet recommended dental chews — fights tartar & freshens breath.", price: "~$28", img: "https://m.media-amazon.com/images/I/71HsT-m6OdL._AC_SL300_.jpg" },
-      { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — great for training dogs and cats.", price: "~$12", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-      { asin: "B0C1PXJNKD", name: "Earth Animal No-Hide Chew Strips", desc: "All-natural rawhide alternative — digestible and long-lasting.", price: "~$15", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-      { asin: "B0DJMPQQ5H", name: "Earth Animal No-Hide Chew Sticks", desc: "Natural rawhide-free chew sticks — gentle on digestion.", price: "~$14", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-      { asin: "B0F1BBH1HM", name: "WOOF Pupsicle Interactive Toy", desc: "Long-lasting lick toy — fill with treats or wet food for enrichment.", price: "~$20", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-      { asin: "B0C15QKZN8", name: "Woof Pupsicle Refill Pops", desc: "Premade frozen treat refills — just freeze and serve.", price: "~$18", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
-      { asin: "B001CS3D1W", name: "Kong Stuffin' Paste Treat", desc: "Easy-squeeze paste perfect for stuffing Kongs and lick mats.", price: "~$10", img: "https://m.media-amazon.com/images/I/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0009YWKUA", name: "Blue Buffalo Life Protection Formula", desc: "Real chicken & garden veggies, no corn/wheat/soy.", price: "~$60", img: "/products/71NHQjZ4CRL._AC_SL300_.jpg" },
+      { asin: "B07JN9STR3", name: "Milk-Bone MaroSnacks Dog Treats", desc: "Classic crunchy treats with real bone marrow inside.", price: "~$10", img: "/products/81v4WXLqFcL._AC_SL300_.jpg" },
+      { asin: "B06ZZCKFFB", name: "Greenies Original Dental Treats", desc: "Vet recommended dental chews — fights tartar & freshens breath.", price: "~$28", img: "/products/71HsT-m6OdL._AC_SL300_.jpg" },
+      { asin: "B0DP1GR5QC", name: "Nutri-Bites Freeze Dried Beef Liver Treats", desc: "Single-ingredient freeze dried beef liver — great for training dogs and cats.", price: "~$12", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0C1PXJNKD", name: "Earth Animal No-Hide Chew Strips", desc: "All-natural rawhide alternative — digestible and long-lasting.", price: "~$15", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0DJMPQQ5H", name: "Earth Animal No-Hide Chew Sticks", desc: "Natural rawhide-free chew sticks — gentle on digestion.", price: "~$14", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0F1BBH1HM", name: "WOOF Pupsicle Interactive Toy", desc: "Long-lasting lick toy — fill with treats or wet food for enrichment.", price: "~$20", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B0C15QKZN8", name: "Woof Pupsicle Refill Pops", desc: "Premade frozen treat refills — just freeze and serve.", price: "~$18", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
+      { asin: "B001CS3D1W", name: "Kong Stuffin' Paste Treat", desc: "Easy-squeeze paste perfect for stuffing Kongs and lick mats.", price: "~$10", img: "/products/71xPTkrFbbL._AC_SL300_.jpg" },
     ],
   },
   {
@@ -2626,10 +2615,10 @@ const SHOP_CATEGORIES = [
     label: "Grooming",
     icon: "✂️",
     products: [
-      { asin: "B07YXNBK9T", name: "Furminator Undercoat Deshedding Tool", desc: "Reduces shedding by up to 90% — loved by groomers.", price: "~$35", img: "https://m.media-amazon.com/images/I/718JC5tJgCL._AC_SL300_.jpg" },
-      { asin: "B07QF4QKJK", name: "Hertzko Self-Cleaning Slicker Brush", desc: "Removes loose fur, detangles, and massages — retractable bristles.", price: "~$16", img: "https://m.media-amazon.com/images/I/71DcAh6GLBL._AC_SL300_.jpg" },
-      { asin: "B01BLPJXBQ", name: "Burt's Bees Natural Shampoo", desc: "pH balanced, tear-free — gentle enough for puppies.", price: "~$8", img: "https://m.media-amazon.com/images/I/71HvHFlUFJL._AC_SL300_.jpg" },
-      { asin: "B001LZXP8I", name: "Dremel 7300-PT Nail Grinder", desc: "Safe, low-stress nail grinding — no sharp clipping needed.", price: "~$30", img: "https://m.media-amazon.com/images/I/61l8ICVNbXL._AC_SL300_.jpg" },
+      { asin: "B07MZN2VZC", name: "Furminator Undercoat Deshedding Tool", desc: "Reduces shedding by up to 90% — loved by groomers.", price: "~$35", img: "/products/718JC5tJgCL._AC_SL300_.jpg" },
+      { asin: "B00ZGPI3OY", name: "Hertzko Self-Cleaning Slicker Brush", desc: "Removes loose fur, detangles, and massages — retractable bristles.", price: "~$16", img: "/products/71DcAh6GLBL._AC_SL300_.jpg" },
+      { asin: "B00DTEV54Y", name: "Burt's Bees Natural Shampoo", desc: "pH balanced, tear-free — gentle enough for puppies.", price: "~$8", img: "/products/71HvHFlUFJL._AC_SL300_.jpg" },
+      { asin: "B003TU0XG4", name: "Dremel 7300-PT Nail Grinder", desc: "Safe, low-stress nail grinding — no sharp clipping needed.", price: "~$30", img: "/products/61l8ICVNbXL._AC_SL300_.jpg" },
     ],
   },
   {
@@ -2637,10 +2626,10 @@ const SHOP_CATEGORIES = [
     label: "Safety & ID",
     icon: "🔒",
     products: [
-      { asin: "B09WLJLN3C", name: "Fi Series 3 GPS Dog Collar", desc: "Real-time GPS tracking with escape alerts and activity monitoring.", price: "~$149", img: "https://m.media-amazon.com/images/I/61yRIf8QEBL._AC_SL300_.jpg" },
-      { asin: "B07LG7C7SB", name: "Ruffwear Front Range Dog Harness", desc: "Padded chest & belly panel — two leash attachment points.", price: "~$50", img: "https://m.media-amazon.com/images/I/71KzP9NCEAL._AC_SL300_.jpg" },
-      { asin: "B000FIVMIO", name: "Kurgo Dog Seat Belt Tether", desc: "Crash-tested safety tether for car travel.", price: "~$18", img: "https://m.media-amazon.com/images/I/71u-t+i2T9L._AC_SL300_.jpg" },
-      { asin: "B07MQZV22Y", name: "EzyDog Zero Shock Leash Absorber", desc: "Bungee leash attachment that reduces sudden pull impact.", price: "~$20", img: "https://m.media-amazon.com/images/I/71gNI71wKWL._AC_SL300_.jpg" },
+      { asin: "B0CVN3TGK3", name: "Fi Series 3 GPS Dog Collar", desc: "Real-time GPS tracking with escape alerts and activity monitoring.", price: "~$149", img: "/products/61yRIf8QEBL._AC_SL300_.jpg" },
+      { asin: "B01N10INNX", name: "Ruffwear Front Range Dog Harness", desc: "Padded chest & belly panel — two leash attachment points.", price: "~$50", img: "/products/71KzP9NCEAL._AC_SL300_.jpg" },
+      { asin: "B07D8XRNWR", name: "Kurgo Dog Seat Belt Tether", desc: "Crash-tested safety tether for car travel.", price: "~$18", img: "/products/71u-t+i2T9L._AC_SL300_.jpg" },
+      { asin: "B00AMQGUEM", name: "EzyDog Zero Shock Leash Absorber", desc: "Bungee leash attachment that reduces sudden pull impact.", price: "~$20", img: "/products/71gNI71wKWL._AC_SL300_.jpg" },
     ],
   },
   {
@@ -2648,10 +2637,10 @@ const SHOP_CATEGORIES = [
     label: "Beds & Comfort",
     icon: "🛏️",
     products: [
-      { asin: "B07CQH3XDB", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate orthopedic foam — great for senior dogs and joints.", price: "~$40", img: "https://m.media-amazon.com/images/I/71l-WOcAJXL._AC_SL300_.jpg" },
-      { asin: "B07B4KXJHY", name: "Best Friends by Sheri Calming Donut Bed", desc: "Bolster sides let dogs curl up and feel secure — machine washable.", price: "~$35", img: "https://m.media-amazon.com/images/I/71pDiLZBBmL._AC_SL300_.jpg" },
-      { asin: "B07L85CSLL", name: "Coolaroo Elevated Pet Bed", desc: "Breathable mesh cot — great for summer and outdoor use.", price: "~$30", img: "https://m.media-amazon.com/images/I/71t0kSGM9BL._AC_SL300_.jpg" },
-      { asin: "B000C3KLX8", name: "ZippyPaws Luxury Crinkle Plush Toy", desc: "Squeaky, crinkly comfort toy for anxious or bored dogs.", price: "~$10", img: "https://m.media-amazon.com/images/I/81C7RVMD3NL._AC_SL300_.jpg" },
+      { asin: "B07P9S5SVK", name: "Furhaven Orthopedic Dog Bed", desc: "Egg-crate orthopedic foam — great for senior dogs and joints.", price: "~$40", img: "/products/71l-WOcAJXL._AC_SL300_.jpg" },
+      { asin: "B01MV0IX66", name: "Best Friends by Sheri Calming Donut Bed", desc: "Bolster sides let dogs curl up and feel secure — machine washable.", price: "~$35", img: "/products/71pDiLZBBmL._AC_SL300_.jpg" },
+      { asin: "B001HX427G", name: "Coolaroo Elevated Pet Bed", desc: "Breathable mesh cot — great for summer and outdoor use.", price: "~$30", img: "/products/71t0kSGM9BL._AC_SL300_.jpg" },
+      { asin: "B006S4XNW4", name: "ZippyPaws Luxury Crinkle Plush Toy", desc: "Squeaky, crinkly comfort toy for anxious or bored dogs.", price: "~$10", img: "/products/81C7RVMD3NL._AC_SL300_.jpg" },
     ],
   },
   {
@@ -2659,10 +2648,10 @@ const SHOP_CATEGORIES = [
     label: "Training & Enrichment",
     icon: "🎓",
     products: [
-      { asin: "B07K5CK4C9", name: "PetSafe Easy Walk No-Pull Harness", desc: "Front-clip harness that gently discourages pulling.", price: "~$25", img: "https://m.media-amazon.com/images/I/71YFLZpZ2GL._AC_SL300_.jpg" },
-      { asin: "B008AACLYU", name: "StarMark Bob-A-Lot Interactive Feeder", desc: "Slow feeder toy — prevents bloat and keeps dogs mentally engaged.", price: "~$12", img: "https://m.media-amazon.com/images/I/81RDlOe2JuL._AC_SL300_.jpg" },
-      { asin: "B07ZF8T76R", name: "Snuffle Mat by Paw5", desc: "Nose-work feeding mat for mental stimulation and slow feeding.", price: "~$35", img: "https://m.media-amazon.com/images/I/71GFfPb1VBL._AC_SL300_.jpg" },
-      { asin: "B07ZPJCQ6Z", name: "iSPECLE Dog Treat Pouch with Clicker", desc: "Hip training pouch with built-in clicker and poop bag dispenser.", price: "~$15", img: "https://m.media-amazon.com/images/I/71ZxAJ07j4L._AC_SL300_.jpg" },
+      { asin: "B000RK5P6W", name: "PetSafe Easy Walk No-Pull Harness", desc: "Front-clip harness that gently discourages pulling.", price: "~$25", img: "/products/71YFLZpZ2GL._AC_SL300_.jpg" },
+      { asin: "B01LZ4YJC7", name: "StarMark Bob-A-Lot Interactive Feeder", desc: "Slow feeder toy — prevents bloat and keeps dogs mentally engaged.", price: "~$12", img: "/products/81RDlOe2JuL._AC_SL300_.jpg" },
+      { asin: "B01N1FV55I", name: "Snuffle Mat by Paw5", desc: "Nose-work feeding mat for mental stimulation and slow feeding.", price: "~$35", img: "/products/71GFfPb1VBL._AC_SL300_.jpg" },
+      { asin: "B07FM6XRDD", name: "iSPECLE Dog Treat Pouch with Clicker", desc: "Hip training pouch with built-in clicker and poop bag dispenser.", price: "~$15", img: "/products/71ZxAJ07j4L._AC_SL300_.jpg" },
     ],
   },
 ];
@@ -2726,7 +2715,7 @@ function ShopTab() {
             >
               <div style={{ background: "#F8F5F0", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, minHeight: 140 }}>
                 <img
-                  src={p.img}
+                  src={`/products/${p.asin}.jpg`}
                   alt={p.name}
                   style={{ maxHeight: 120, maxWidth: "100%", objectFit: "contain" }}
                   onError={e => { e.target.style.display = "none"; e.target.parentElement.innerHTML = "<div style='font-size:48px'>🛒</div>"; }}
