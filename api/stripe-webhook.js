@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     }
 
     // Update Supabase profile to is_pro = true
-    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     const response = await fetch(
